@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Check,
   ChevronDown,
+  Compass,
   HelpCircle,
   Shield,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ import { LanguageSelector } from '../components/LanguageSelector';
 import { AppLogo } from '../components/AppLogo';
 import { PlanPurchaseModal } from '../components/PlanPurchaseModal';
 import { Ml7Text } from '../components/Ml7Text';
+import { ExploreShowcase } from '../components/ExploreShowcase';
 
 interface HomeViewProps {
   home: HomeSettings;
@@ -141,6 +143,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const heroCtaVisible = _home.hero?.cta1Visible !== false;
 
   const navHomeText = currentLang === 'ar' ? (navCfg.home || 'الرئيسية') : t.home;
+  const navExploreText = tr('استكشف', 'گەڕان', 'Explore');
   const navFeaturesText = currentLang === 'ar' ? (navCfg.services || 'المميزات') : t.features;
   const navFaqText = currentLang === 'ar' ? (navCfg.faq || 'الأسئلة الشائعة') : tr('الأسئلة الشائعة', 'پرسیارە باوەکان', 'FAQ');
   const navPricingText = currentLang === 'ar' ? (navCfg.pricing || 'الأسعار') : t.pricing;
@@ -406,6 +409,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </button>
                 <button
                   type="button"
+                  onClick={() => scrollToSection('explore')}
+                  className="profile-popover-item"
+                  style={{ borderRadius: '12px' }}
+                >
+                  {isRtl ? (
+                    <>
+                      <span style={{ flex: 1 }}>{navExploreText}</span>
+                      <Compass size={18} style={{ color: 'var(--muted)' }} />
+                    </>
+                  ) : (
+                    <>
+                      <Compass size={18} style={{ color: 'var(--muted)' }} />
+                      <span style={{ flex: 1 }}>{navExploreText}</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onClick={() => scrollToSection('services')}
                   className="profile-popover-item"
                   style={{ borderRadius: '12px' }}
@@ -634,6 +655,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             }}
           >
             <a href="/" onClick={(e) => { e.preventDefault(); scrollToSection('home'); }}>{navHomeText}</a>
+            <a href="/explore" onClick={(e) => { e.preventDefault(); scrollToSection('explore'); }}>{navExploreText}</a>
             <a href="/services" onClick={(e) => { e.preventDefault(); scrollToSection('services'); }}>{navFeaturesText}</a>
             <a href="/faq" onClick={(e) => { e.preventDefault(); scrollToSection('faq'); }}>{navFaqText}</a>
             <a href="/pricing" onClick={(e) => { e.preventDefault(); scrollToSection('pricing'); }}>{navPricingText}</a>
@@ -943,6 +965,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
       )}
+
+      {/* ========================================================================= */}
+      {/* 2. SECTION: استكشف (INTERACTIVE SEAMLESS PLATFORM TOUR)                   */}
+      {/* ========================================================================= */}
+      <ExploreShowcase lang={currentLang} homeTheme={homeTheme} />
 
       {/* ========================================================================= */}
       {/* 3. SECTION: مميزاتنا (STRICTLY 2-PER-ROW ON DESKTOP & MOBILE)              */}
