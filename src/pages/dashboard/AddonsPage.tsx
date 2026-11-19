@@ -12,6 +12,7 @@ import {
   Eye,
   Image as ImageIcon,
   Plus,
+  ShoppingBag,
   Sparkles,
   Trash2,
   Volume2,
@@ -450,7 +451,13 @@ export const AddonsPage: React.FC = () => {
                         نص زر الإضافة / الطلب (الزر الأيسر)
                         <input
                           type="text"
-                          value={addonDraft.buttonText || 'إضافة إلى السلة'}
+                          value={
+                            !addonDraft.buttonText ||
+                            addonDraft.buttonText === 'تصفح المنيو واطلب الآن' ||
+                            addonDraft.buttonText === 'تصفح المنيو'
+                              ? 'إضافة إلى السلة'
+                              : addonDraft.buttonText
+                          }
                           onChange={(e) => updateDraft((p) => ({ ...p, buttonText: e.target.value }))}
                           placeholder="إضافة إلى السلة"
                           style={themedInputStyle}
@@ -1909,7 +1916,7 @@ export const AddonsPage: React.FC = () => {
               />
             )}
 
-            <div style={{ padding: '22px' }}>
+            <div style={{ padding: '18px 20px 20px', textAlign: 'center' }}>
               {(addonDraft.badgeText || addonsState.offerPopup?.badgeText) && (
                 <div
                   style={{
@@ -1926,28 +1933,62 @@ export const AddonsPage: React.FC = () => {
                   {addonDraft.badgeText || addonsState.offerPopup?.badgeText}
                 </div>
               )}
-              <h3 style={{ fontSize: '19px', fontWeight: 900, color: 'var(--ink)', margin: '0 0 8px' }}>
+              <h3 style={{ fontSize: '17.5px', fontWeight: 900, color: 'var(--ink)', margin: '0 0 6px' }}>
                 {addonDraft.title || addonsState.offerPopup?.title}
               </h3>
-              <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.55, margin: '0 0 16px' }}>
                 {addonDraft.subtitle || addonsState.offerPopup?.subtitle}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '10px' }} dir="rtl">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }} dir="rtl">
                 <button
                   type="button"
                   onClick={() => setShowPopupPreview(false)}
-                  className="btn s"
-                  style={{ fontWeight: 800, justifyContent: 'center' }}
+                  style={{
+                    height: '36px',
+                    padding: '0 18px',
+                    borderRadius: '999px',
+                    border: '1px solid var(--line)',
+                    background: 'var(--soft)',
+                    color: 'var(--muted)',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
                 >
                   إخفاء
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowPopupPreview(false)}
-                  className="btn p"
-                  style={{ fontWeight: 800, justifyContent: 'center' }}
+                  style={{
+                    height: '36px',
+                    padding: '0 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: 'var(--brand)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px color-mix(in srgb, var(--brand) 25%, transparent)',
+                    cursor: 'pointer',
+                  }}
                 >
-                  {addonDraft.buttonText || addonsState.offerPopup?.buttonText || 'إضافة إلى السلة'}
+                  <ShoppingBag size={13.5} />
+                  <span>
+                    {(() => {
+                      const raw = String(addonDraft.buttonText || addonsState.offerPopup?.buttonText || '').trim();
+                      return !raw || raw === 'تصفح المنيو واطلب الآن' || raw === 'تصفح المنيو' ? 'إضافة إلى السلة' : raw;
+                    })()}
+                  </span>
                 </button>
               </div>
             </div>

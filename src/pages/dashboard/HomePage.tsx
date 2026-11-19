@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowUpRight,
@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { formatNumber } from '../../utils/storage';
+import { fetchDashboardTelegramStatusApi } from '../../utils/adminApi';
 import { DEFAULT_MEDIA_ASSETS } from '../../utils/businessDefaults';
 import { Ml7Text } from '../../components/Ml7Text';
 import { useDashboard } from './DashboardContext';
@@ -55,7 +56,30 @@ export const HomePage: React.FC = () => {
   const hasDeliveryZonesConfigured = Boolean(
     Array.isArray(rest.deliveryZones) && rest.deliveryZones.length > 0
   );
-  const hasTelegramConnected = Boolean(rest.telegramChatId && String(rest.telegramChatId).trim());
+  const targetTelegramRid = activeRid || mainRid || rest.id;
+  const [serverTelegramLinked, setServerTelegramLinked] = useState<boolean>(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!targetTelegramRid) return;
+    void fetchDashboardTelegramStatusApi(targetTelegramRid)
+      .then((res) => {
+        if (active && typeof res?.linked === 'boolean') {
+          setServerTelegramLinked(res.linked);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [targetTelegramRid, rest.telegramPhone, rest.telegramUnlinkedManually]);
+
+  const hasTelegramConnected = Boolean(
+    serverTelegramLinked ||
+      rest.telegramLinked ||
+      (rest.telegramChatId && String(rest.telegramChatId).trim()) ||
+      (rest.telegramPhone && String(rest.telegramPhone).trim() && rest.telegramUnlinkedManually !== true)
+  );
   const hasMapLocation = Boolean(rest.mapUrl && rest.mapUrl.trim());
 
   interface MenuTip {

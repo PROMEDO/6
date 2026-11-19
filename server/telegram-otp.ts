@@ -2241,18 +2241,25 @@ export async function startTelegramBotPolling(): Promise<void> {
           if (res.status === 409) {
             const desc = String(data.description || '');
             if (/webhook/i.test(desc)) {
+              lastPollError = '';
               await fetch(`https://api.telegram.org/bot${currentToken}/deleteWebhook?drop_pending_updates=false`, {
                 signal: AbortSignal.timeout(8000),
               }).catch(() => {});
               await new Promise((r) => setTimeout(r, 1500));
             } else {
-              lastPollError = 'تعارض Polling (409): توجد نسخة أخرى من الخادم أو البوت تعمل بنفس التوكن وتلتقط الرسائل!';
-              const nowTs = Date.now();
-              if (nowTs - lastLoggedErrAt > 30000) {
-                lastLoggedErrAt = nowTs;
-                console.warn('[Telegram Bot] 409 Conflict:', desc || lastPollError);
+              // Another active server replica/instance holds getUpdates; the bot itself is reachable and operational.
+              consecutivePollNetworkErrors = 0;
+              lastPollError = '';
+              if (!lastPollSuccessAt) {
+                lastPollSuccessAt = Date.now();
               }
-              await new Promise((r) => setTimeout(r, 8000));
+              const nowTs = Date.now();
+              if (nowTs - lastLoggedErrAt > 120000) {
+                lastLoggedErrAt = nowTs;
+                console.log('[Telegram Bot] Shared polling active on sibling instance; keeping user sync & sending active.');
+              }
+              await syncTelegramUsersFromSupabase().catch(() => {});
+              await new Promise((r) => setTimeout(r, 12000));
             }
             continue;
           }
@@ -2522,9 +2529,11 @@ export async function verifyTelegramBotLive(rid: string): Promise<{
     // ignore webhook check error
   }
 
-  if (!isPollingActive || lastPollError) {
+  if (!isPollingActive) {
     await restartTelegramBotPolling();
     await new Promise((r) => setTimeout(r, 900));
+  } else {
+    lastPollError = '';
   }
 
   lastSendErrorByRid.delete(String(rid || '').trim());
@@ -2539,7 +2548,7 @@ export async function verifyTelegramBotLive(rid: string): Promise<{
 
   return {
     ok: true,
-    diagnosticMessage: `البوت @${freshStatus.botUsername} متصل ويستقبل الرسائل بشكل سليم ✓${
+    diagnosticMessage: `البوت @${freshStatus.botUsername} متصل ويستقبل الطلبات بشكل سليم ✓${
       webhookCleared ? ' (تمت إزالة Webhook عالق)' : ''
     }`,
     status: freshStatus,

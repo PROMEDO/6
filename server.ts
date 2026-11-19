@@ -206,6 +206,11 @@ app.get('/api/health', (_req, res) => {
 function sanitizeRecordSecrets<T>(record: T): T {
   if (!record || typeof record !== 'object' || Array.isArray(record)) return record;
   const copy = { ...(record as Record<string, unknown>) };
+  if ('telegramChatId' in copy || 'telegramPhone' in copy || 'telegramLinked' in copy) {
+    const hasChat = Boolean(String(copy.telegramChatId || '').trim());
+    const hasPhone = Boolean(String(copy.telegramPhone || '').trim()) && copy.telegramUnlinkedManually !== true;
+    copy.telegramLinked = hasChat || hasPhone || Boolean(copy.telegramLinked);
+  }
   delete copy.pw;
   delete copy.passwordHash;
   delete copy.jwtToken;

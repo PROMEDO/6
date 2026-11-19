@@ -809,6 +809,8 @@ export interface Restaurant {
   };
   telegramPhone?: string;
   telegramChatId?: string;
+  telegramLinked?: boolean;
+  telegramUnlinkedManually?: boolean;
   telegramUsername?: string;
   telegramNotificationsEnabled?: boolean;
   orderChannel?: 'both' | 'telegram' | 'whatsapp';

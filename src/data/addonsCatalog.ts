@@ -749,7 +749,10 @@ export function buildDefaultAddons(rest?: Restaurant): RestaurantAddons {
         saved.offerPopup?.image ||
         rest?.offerPopup?.image ||
         'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=700&q=80',
-      buttonText: saved.offerPopup?.buttonText || rest?.offerPopup?.buttonText || 'تصفح المنيو واطلب الآن',
+      buttonText: (() => {
+        const raw = String(saved.offerPopup?.buttonText || rest?.offerPopup?.buttonText || '').trim();
+        return !raw || raw === 'تصفح المنيو واطلب الآن' || raw === 'تصفح المنيو' ? 'إضافة إلى السلة' : raw;
+      })(),
     },
     announcementBar: {
       configured: isCfg('announcementBar'),

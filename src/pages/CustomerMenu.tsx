@@ -716,7 +716,13 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   const offerPopupTitle = offerPopupCfg?.title || offerPopupLinkedItem?.n || '';
   const offerPopupSubtitle = offerPopupCfg?.subtitle || offerPopupLinkedItem?.d || '';
   const offerPopupImage = offerPopupCfg?.image || offerPopupLinkedItem?.img || '';
-  const offerPopupBtnText = offerPopupCfg?.buttonText || 'إضافة إلى السلة';
+  const rawOfferPopupBtnText = String(offerPopupCfg?.buttonText || '').trim();
+  const offerPopupBtnText =
+    !rawOfferPopupBtnText ||
+    rawOfferPopupBtnText === 'تصفح المنيو واطلب الآن' ||
+    rawOfferPopupBtnText === 'تصفح المنيو'
+      ? 'إضافة إلى السلة'
+      : rawOfferPopupBtnText;
   const offerPopupEnabled =
     resolvedPlan.perms.popupAd &&
     (addons.offerPopup ? addons.offerPopup.enabled === true : rest?.offerPopup?.enabled === true);
@@ -6379,7 +6385,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', display: 'block' }}
               />
             )}
-            <div style={{ padding: '20px 22px', textAlign: 'center' }}>
+            <div style={{ padding: '18px 20px 20px', textAlign: 'center' }}>
               {offerPopupBadge && (
                 <div
                   style={{
@@ -6397,29 +6403,29 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   {offerPopupBadge}
                 </div>
               )}
-              <h3 style={{ margin: '0 0 8px', fontSize: '18.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: '17.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
                 {offerPopupTitle}
               </h3>
               {offerPopupSubtitle && (
-                <p style={{ margin: '0 0 12px', fontSize: '13.5px', color: 'var(--pm-muted)', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--pm-muted)', lineHeight: 1.55 }}>
                   {offerPopupSubtitle}
                 </p>
               )}
               {(offerPopupSpecialPrice !== undefined || offerPopupLinkedItem) && (
-                <div style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{ margin: '0 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   {offerPopupSpecialPrice !== undefined ? (
                     <>
-                      <b className="tabular-nums" style={{ fontSize: '17px', fontWeight: 900, color: accentText }}>
+                      <b className="tabular-nums" style={{ fontSize: '16.5px', fontWeight: 900, color: accentText }}>
                         {fmtMoney(offerPopupSpecialPrice)}
                       </b>
                       {offerPopupLinkedItem && offerPopupLinkedItem.pr > offerPopupSpecialPrice && (
-                        <s className="tabular-nums" style={{ fontSize: '13px', color: 'var(--pm-muted)' }}>
+                        <s className="tabular-nums" style={{ fontSize: '12.5px', color: 'var(--pm-muted)' }}>
                           {fmtMoney(offerPopupLinkedItem.pr)}
                         </s>
                       )}
                     </>
                   ) : offerPopupLinkedItem ? (
-                    <b className="tabular-nums" style={{ fontSize: '16px', fontWeight: 900, color: accentText }}>
+                    <b className="tabular-nums" style={{ fontSize: '15.5px', fontWeight: 900, color: accentText }}>
                       {fmtMoney(offerPopupLinkedItem.pr)}
                     </b>
                   ) : null}
@@ -6429,10 +6435,12 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
               <div
                 dir="rtl"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1.35fr',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '10px',
                   marginTop: '6px',
+                  flexWrap: 'wrap',
                 }}
               >
                 {/* Right button in RTL: إخفاء */}
@@ -6440,14 +6448,20 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   type="button"
                   onClick={() => setOfferModalOpen(false)}
                   style={{
+                    height: '36px',
+                    padding: '0 18px',
+                    borderRadius: '999px',
                     border: '1px solid var(--pm-line)',
-                    borderRadius: '12px',
-                    background: 'var(--pm-soft)',
-                    color: 'var(--pm-ink)',
-                    padding: '12px 10px',
-                    fontWeight: 800,
-                    fontSize: '14px',
+                    background: 'color-mix(in srgb, var(--pm-ink) 5%, var(--pm-soft))',
+                    color: 'var(--pm-muted)',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     cursor: 'pointer',
+                    transition: 'transform 0.16s ease, opacity 0.16s ease',
                   }}
                 >
                   إخفاء
@@ -6483,17 +6497,26 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                     }
                   }}
                   style={{
-                    border: '1px solid color-mix(in srgb, var(--pm-brand) 45%, transparent)',
-                    borderRadius: '12px',
+                    height: '36px',
+                    padding: '0 18px',
+                    borderRadius: '999px',
+                    border: 'none',
                     background: brandColor,
                     color: brandInk,
-                    padding: '12px 10px',
-                    fontWeight: 800,
-                    fontSize: '14px',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px color-mix(in srgb, var(--pm-brand) 24%, transparent)',
                     cursor: 'pointer',
+                    transition: 'transform 0.16s ease, opacity 0.16s ease',
                   }}
                 >
-                  {offerPopupMode === 'dish' || offerPopupLinkedItem ? (offerPopupBtnText || 'إضافة إلى السلة') : (offerPopupBtnText || 'إضافة إلى السلة')}
+                  <ShoppingBag size={13.5} />
+                  <span>{offerPopupBtnText}</span>
                 </button>
               </div>
             </div>

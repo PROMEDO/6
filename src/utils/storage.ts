@@ -3118,7 +3118,7 @@ export function ensureDemoRestaurant() {
         title: 'توصيل مجاني عند طلبك بـ 25,000 د.ع وأكثر',
         subtitle: 'استمتع بأشهى وجبات كاب برجر مع توصيل سريع لجميع مناطق بغداد',
         image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80',
-        buttonText: 'تصفح المنيو واطلب الآن',
+        buttonText: 'إضافة إلى السلة',
       },
       addons: {
         offerPopup: {
@@ -3126,7 +3126,7 @@ export function ensureDemoRestaurant() {
           title: 'عرض خاص ومميز لا يفوتك!',
           subtitle: 'احصل على خصم 15% عند الطلب عبر الواتساب اليوم',
           image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80',
-          buttonText: 'تصفح المنيو واطلب الآن',
+          buttonText: 'إضافة إلى السلة',
         },
         announcementBar: {
           enabled: false,
