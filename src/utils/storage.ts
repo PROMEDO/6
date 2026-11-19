@@ -2325,6 +2325,17 @@ export function deleteItem(path: string) {
   void pushDbDiff({ del: [path] });
 }
 
+export async function deleteItemAndSync(path: string): Promise<void> {
+  const store = loadStore();
+  delete store[path];
+  saveStore(store);
+  broadcastLocalDiff(undefined, [path]);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('menuplus_db_updated'));
+  }
+  await pushDbDiff({ del: [path] });
+}
+
 export function getCollection<T>(collection: string): (T & { id: string })[] {
   const store = loadStore();
   const prefix = collection + '/';

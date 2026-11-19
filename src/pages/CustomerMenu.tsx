@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeftRight,
@@ -67,6 +67,7 @@ import {
   getCollection,
   getItem,
   getPlans,
+  getSite,
   getTheme,
   isRestaurantOpenNow,
   putItem,
@@ -693,38 +694,47 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   const [healthModalOpen, setHealthModalOpen] = useState(false);
   const [rateModalOpen, setRateModalOpen] = useState(false);
 
-  // Offer popup (once per session when enabled via addon or legacy offerPopup)
-  const offerPopupTitle = addons.offerPopup?.title || rest?.offerPopup?.title || '';
-  const offerPopupSubtitle = addons.offerPopup?.subtitle || rest?.offerPopup?.subtitle || '';
-  const offerPopupImage = addons.offerPopup?.image || rest?.offerPopup?.image || '';
-  const offerPopupBtnText =
-    addons.offerPopup?.buttonText ||
-    rest?.offerPopup?.buttonText ||
-    'تصفح المنيو واطلب الآن';
+  // Offer popup (shown on every page refresh when enabled)
+  const offerPopupCfg = addons.offerPopup || rest?.offerPopup;
+  const offerPopupMode: 'ad' | 'dish' = offerPopupCfg?.mode === 'dish' ? 'dish' : 'ad';
+  const offerPopupItemId = String(offerPopupCfg?.itemId || '').trim();
+  const offerPopupBadge = String(offerPopupCfg?.badgeText || '').trim();
+  const offerPopupSpecialPrice =
+    offerPopupCfg?.specialPrice !== undefined &&
+    offerPopupCfg?.specialPrice !== null &&
+    Number.isFinite(Number(offerPopupCfg.specialPrice))
+      ? Math.max(0, Number(offerPopupCfg.specialPrice))
+      : undefined;
+  const offerPopupLinkedItem = useMemo(() => {
+    if (!offerPopupItemId) return null;
+    return (
+      getCollection<MenuItem>('items').find(
+        (it) => it.id === offerPopupItemId && it.rid === restaurantId && it.published !== false && it.available !== false
+      ) || null
+    );
+  }, [offerPopupItemId, restaurantId, rest?.id]);
+  const offerPopupTitle = offerPopupCfg?.title || offerPopupLinkedItem?.n || '';
+  const offerPopupSubtitle = offerPopupCfg?.subtitle || offerPopupLinkedItem?.d || '';
+  const offerPopupImage = offerPopupCfg?.image || offerPopupLinkedItem?.img || '';
+  const offerPopupBtnText = offerPopupCfg?.buttonText || 'إضافة إلى السلة';
   const offerPopupEnabled =
     resolvedPlan.perms.popupAd &&
     (addons.offerPopup ? addons.offerPopup.enabled === true : rest?.offerPopup?.enabled === true);
 
   const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const shownOfferOnMountRef = useRef<string>('');
   useEffect(() => {
     if (!offerPopupEnabled || !offerPopupTitle) {
       setOfferModalOpen(false);
       return;
     }
-    const signature = `${offerPopupTitle}|${offerPopupSubtitle}|${offerPopupBtnText}`;
-    const key = `menuplus_offer_seen_${restaurantId}`;
-    try {
-      if (sessionStorage.getItem(key) !== signature) {
-        const timer = setTimeout(() => {
-          setOfferModalOpen(true);
-          sessionStorage.setItem(key, signature);
-        }, 420);
-        return () => clearTimeout(timer);
-      }
-    } catch {
-      // ignore storage failure
-    }
-  }, [restaurantId, offerPopupEnabled, offerPopupTitle, offerPopupSubtitle, offerPopupBtnText]);
+    if (shownOfferOnMountRef.current === restaurantId) return;
+    shownOfferOnMountRef.current = restaurantId;
+    const timer = setTimeout(() => {
+      setOfferModalOpen(true);
+    }, 320);
+    return () => clearTimeout(timer);
+  }, [restaurantId, offerPopupEnabled, offerPopupTitle]);
 
   // Active category tracking
   const [activeCatId, setActiveCatId] = useState<string>('');
@@ -796,10 +806,147 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'details' | 'done'>('cart');
   const [selectedAreaIdx, setSelectedAreaIdx] = useState<number>(0);
   const [selectedCityIdx, setSelectedCityIdx] = useState<number>(0);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
+
+  // Cross-menu saved customer details (auto-filled across all restaurant menus; GPS stays live per visit)
+  const readSharedCustomerProfile = () => {
+    const out = { name: '', phone: '', address: '', notes: '' };
+    if (typeof window === 'undefined') return out;
+    try {
+      const rawCookie = document.cookie
+        .split(';')
+        .map((c) => c.trim())
+        .find((c) => c.startsWith('mp_cust_profile='));
+      if (rawCookie) {
+        const parsedCookie = JSON.parse(decodeURIComponent(rawCookie.slice('mp_cust_profile='.length)));
+        if (parsedCookie && typeof parsedCookie === 'object') {
+          if (typeof parsedCookie.name === 'string') out.name = parsedCookie.name;
+          if (typeof parsedCookie.phone === 'string') out.phone = parsedCookie.phone;
+          if (typeof parsedCookie.address === 'string') out.address = parsedCookie.address;
+          if (typeof parsedCookie.notes === 'string') out.notes = parsedCookie.notes;
+        }
+      }
+    } catch {
+      // ignore cookie parse error
+    }
+    try {
+      const rawLocal = localStorage.getItem('menuplus_shared_customer_profile_v1');
+      if (rawLocal) {
+        const parsedLocal = JSON.parse(rawLocal);
+        if (parsedLocal && typeof parsedLocal === 'object') {
+          if (!out.name && typeof parsedLocal.name === 'string') out.name = parsedLocal.name;
+          if (!out.phone && typeof parsedLocal.phone === 'string') out.phone = parsedLocal.phone;
+          if (!out.address && typeof parsedLocal.address === 'string') out.address = parsedLocal.address;
+          if (!out.notes && typeof parsedLocal.notes === 'string') out.notes = parsedLocal.notes;
+        }
+      }
+    } catch {
+      // ignore storage error
+    }
+    return out;
+  };
+
+  const initialSharedProfile = useMemo(() => readSharedCustomerProfile(), []);
+  const [customerName, setCustomerName] = useState(initialSharedProfile.name);
+  const [customerPhone, setCustomerPhone] = useState(initialSharedProfile.phone);
+  const [customerAddress, setCustomerAddress] = useState(initialSharedProfile.address);
+  const [customerNotes, setCustomerNotes] = useState(initialSharedProfile.notes);
+  const [profileAutoFilled, setProfileAutoFilled] = useState(() =>
+    Boolean(initialSharedProfile.name || initialSharedProfile.phone || initialSharedProfile.address)
+  );
+  const profileSyncTimerRef = useRef<number | null>(null);
+  const persistSharedProfile = useCallback(
+    (profile: { name: string; phone: string; address: string; notes: string }, syncServerNow = false) => {
+      const clean = {
+        name: profile.name.trim(),
+        phone: profile.phone.trim(),
+        address: profile.address.trim(),
+        notes: profile.notes.trim(),
+      };
+      try {
+        localStorage.setItem('menuplus_shared_customer_profile_v1', JSON.stringify(clean));
+      } catch {
+        // ignore storage error
+      }
+      try {
+        const siteBase = getSite().baseDomain?.trim().toLowerCase() || '';
+        const host = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+        const domainAttr =
+          siteBase && (host === siteBase || host.endsWith(`.${siteBase}`))
+            ? `; Domain=.${siteBase}`
+            : '';
+        const secureAttr = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `mp_cust_profile=${encodeURIComponent(
+          JSON.stringify(clean)
+        )}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax${domainAttr}${secureAttr}`;
+      } catch {
+        // ignore cookie error
+      }
+      if (syncServerNow) {
+        void fetch('/api/customer-profile', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(clean),
+        }).catch(() => {});
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/customer-profile', { credentials: 'include', cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { profile?: { name?: string; phone?: string; address?: string; notes?: string } | null } | null) => {
+        if (!active || !data?.profile) return;
+        const p = data.profile;
+        let filledAny = false;
+        if (p.name) {
+          setCustomerName((prev) => prev || p.name || '');
+          filledAny = true;
+        }
+        if (p.phone) {
+          setCustomerPhone((prev) => prev || p.phone || '');
+          filledAny = true;
+        }
+        if (p.address) {
+          setCustomerAddress((prev) => prev || p.address || '');
+          filledAny = true;
+        }
+        if (p.notes) {
+          setCustomerNotes((prev) => prev || p.notes || '');
+        }
+        if (filledAny) setProfileAutoFilled(true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (!customerName && !customerPhone && !customerAddress && !customerNotes) return;
+    if (profileSyncTimerRef.current !== null) {
+      window.clearTimeout(profileSyncTimerRef.current);
+    }
+    const snapshot = {
+      name: customerName,
+      phone: customerPhone,
+      address: customerAddress,
+      notes: customerNotes,
+    };
+    persistSharedProfile(snapshot, false);
+    profileSyncTimerRef.current = window.setTimeout(() => {
+      profileSyncTimerRef.current = null;
+      persistSharedProfile(snapshot, true);
+    }, 550);
+    return () => {
+      if (profileSyncTimerRef.current !== null) {
+        window.clearTimeout(profileSyncTimerRef.current);
+      }
+    };
+  }, [customerName, customerPhone, customerAddress, customerNotes, persistSharedProfile]);
+
   const [selectedTable, setSelectedTable] = useState<string>(() => getTableFromUrl());
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
@@ -1651,6 +1798,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
         if (customerAddress.trim()) lines.push(`العنوان: ${customerAddress.trim()}`);
         if (gpsCoords) {
           lines.push(`📍 الموقع (Google Maps):\nhttps://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}`);
+          lines.push(`🚗 الموقع (Waze):\nhttps://waze.com/ul?ll=${gpsCoords.lat},${gpsCoords.lng}&navigate=yes`);
         }
       }
 
@@ -1658,6 +1806,16 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
       if (cu.n) lines.push(`الزبون: ${cu.n}`);
       if (cu.ph) lines.push(`الهاتف: ${cu.ph}`);
       if (combinedNotes) lines.push(`ملاحظات: ${combinedNotes}`);
+
+      persistSharedProfile(
+        {
+          name: cu.n,
+          phone: cu.ph,
+          address: customerAddress,
+          notes: customerNotes,
+        },
+        true
+      );
 
       const waUrl = useWhatsapp && targetWaPhone ? waLink(targetWaPhone, lines.join('\n')) : '';
 
@@ -3449,7 +3607,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
         <div
           style={{
             position: 'fixed',
-            bottom: totalCount > 0 ? '96px' : '20px',
+            bottom: '96px',
             insetInlineEnd: '16px',
             zIndex: 45,
             display: 'flex',
@@ -3514,7 +3672,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           onClick={() => setCompareModalOpen(true)}
           style={{
             position: 'fixed',
-            bottom: totalCount > 0 ? '96px' : '20px',
+            bottom: '96px',
             insetInlineStart: '16px',
             zIndex: 46,
             background: brandColor,
@@ -3533,11 +3691,11 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
         </button>
       )}
 
-      {/* Floating Bottom Cart & Free Delivery Dock */}
-      {totalCount > 0 && !cartOpen && (
+      {/* Persistent Always-Floating Bottom Cart & Free Delivery Dock */}
+      {!cartOpen && (
         <div className="pm-floating-dock">
           <div className="pm-dock-inner">
-            {freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery' && (
+            {totalCount > 0 && freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery' && (
               <div className={`pm-fd-card ${qualifiesFreeDelivery ? 'qualifies' : ''}`}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Truck size={16} style={{ flexShrink: 0 }} />
@@ -3574,7 +3732,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShoppingBag size={19} />
-                <span>عرض السلة</span>
+                <span>{totalCount > 0 ? 'عرض السلة' : 'سلة الطلبات'}</span>
                 <span
                   className="tabular-nums"
                   style={{
@@ -3588,7 +3746,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 </span>
               </span>
               <span className="tabular-nums">
-                {fmtMoney(subtotal)} ←
+                {totalCount > 0 ? `${fmtMoney(subtotal)} ←` : 'افتح السلة ←'}
               </span>
             </button>
           </div>
@@ -4240,9 +4398,27 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 </button>
               </div>
             ) : cart.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 18px', color: 'var(--pm-muted)' }}>
-                <ShoppingBag size={36} style={{ margin: '0 auto 10px', opacity: 0.55 }} />
-                <p style={{ margin: 0, fontWeight: 700, color: 'var(--pm-muted)' }}>السلة فارغة</p>
+              <div style={{ textAlign: 'center', padding: '48px 18px', color: 'var(--pm-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                <ShoppingBag size={40} style={{ opacity: 0.55 }} />
+                <p style={{ margin: 0, fontWeight: 800, fontSize: '15px', color: 'var(--pm-ink)' }}>سلتك فارغة حالياً</p>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--pm-muted)' }}>أضف أطباقك المفضلة من المنيو وسنحتفظ بها هنا أثناء تصفحك.</p>
+                <button
+                  type="button"
+                  onClick={() => setCartOpen(false)}
+                  style={{
+                    marginTop: '4px',
+                    padding: '10px 22px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: brandColor,
+                    color: brandInk,
+                    fontSize: '13.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  تصفح المنيو
+                </button>
               </div>
             ) : checkoutStep === 'cart' ? (
               <>
@@ -5200,6 +5376,29 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 onSubmit={handleSubmitOrder}
                 style={{ flex: 1, overflowY: 'auto', padding: '16px 18px 24px' }}
               >
+                {profileAutoFilled && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '11px',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: isLightMenu ? '#047857' : '#6EE7B7',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <span>تم تعبئة معلوماتك المحفوظة تلقائياً ✓</span>
+                    {orderType === 'delivery' && !gpsCoords && (
+                      <span style={{ opacity: 0.9 }}>حدد GPS لموقعك الآن</span>
+                    )}
+                  </div>
+                )}
                 <div style={{ marginBottom: '14px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: 'var(--pm-ink)', marginBottom: '6px' }}>
                     الاسم <span style={{ color: '#f87171' }}>*</span>
@@ -6139,7 +6338,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
       )}
 
       {/* ================================================================
-          MODAL 11: PROMOTIONAL OFFER POPUP
+          MODAL 11: PROMOTIONAL OFFER POPUP (Shows on refresh, 2 actions)
           ================================================================ */}
       {offerModalOpen && offerPopupEnabled && offerPopupTitle && (
         <div
@@ -6149,12 +6348,13 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
         >
           <div
             className="pm-sheet"
-            style={{ borderRadius: '22px', maxWidth: '400px', overflow: 'hidden', position: 'relative' }}
+            style={{ borderRadius: '22px', maxWidth: '410px', overflow: 'hidden', position: 'relative' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setOfferModalOpen(false)}
+              aria-label="إخفاء"
               style={{
                 position: 'absolute',
                 top: '12px',
@@ -6166,6 +6366,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 border: '1px solid var(--pm-line)',
                 cursor: 'pointer',
                 color: 'var(--pm-ink)',
+                zIndex: 2,
               }}
             >
               ✕
@@ -6179,31 +6380,122 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
               />
             )}
             <div style={{ padding: '20px 22px', textAlign: 'center' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 800, color: 'var(--pm-ink)' }}>
+              {offerPopupBadge && (
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: 'var(--pm-soft)',
+                    border: '1px solid color-mix(in srgb, var(--pm-brand) 30%, transparent)',
+                    color: accentText,
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    marginBottom: '8px',
+                  }}
+                >
+                  {offerPopupBadge}
+                </div>
+              )}
+              <h3 style={{ margin: '0 0 8px', fontSize: '18.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
                 {offerPopupTitle}
               </h3>
               {offerPopupSubtitle && (
-                <p style={{ margin: '0 0 18px', fontSize: '13.5px', color: 'var(--pm-muted)', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 12px', fontSize: '13.5px', color: 'var(--pm-muted)', lineHeight: 1.6 }}>
                   {offerPopupSubtitle}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => setOfferModalOpen(false)}
+              {(offerPopupSpecialPrice !== undefined || offerPopupLinkedItem) && (
+                <div style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  {offerPopupSpecialPrice !== undefined ? (
+                    <>
+                      <b className="tabular-nums" style={{ fontSize: '17px', fontWeight: 900, color: accentText }}>
+                        {fmtMoney(offerPopupSpecialPrice)}
+                      </b>
+                      {offerPopupLinkedItem && offerPopupLinkedItem.pr > offerPopupSpecialPrice && (
+                        <s className="tabular-nums" style={{ fontSize: '13px', color: 'var(--pm-muted)' }}>
+                          {fmtMoney(offerPopupLinkedItem.pr)}
+                        </s>
+                      )}
+                    </>
+                  ) : offerPopupLinkedItem ? (
+                    <b className="tabular-nums" style={{ fontSize: '16px', fontWeight: 900, color: accentText }}>
+                      {fmtMoney(offerPopupLinkedItem.pr)}
+                    </b>
+                  ) : null}
+                </div>
+              )}
+
+              <div
+                dir="rtl"
                 style={{
-                  width: '100%',
-                  border: '1px solid color-mix(in srgb, var(--pm-brand) 45%, transparent)',
-                  borderRadius: '12px',
-                  background: brandColor,
-                  color: brandInk,
-                  padding: '12px',
-                  fontWeight: 800,
-                  fontSize: '14.5px',
-                  cursor: 'pointer',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1.35fr',
+                  gap: '10px',
+                  marginTop: '6px',
                 }}
               >
-                {offerPopupBtnText}
-              </button>
+                {/* Right button in RTL: إخفاء */}
+                <button
+                  type="button"
+                  onClick={() => setOfferModalOpen(false)}
+                  style={{
+                    border: '1px solid var(--pm-line)',
+                    borderRadius: '12px',
+                    background: 'var(--pm-soft)',
+                    color: 'var(--pm-ink)',
+                    padding: '12px 10px',
+                    fontWeight: 800,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  إخفاء
+                </button>
+                {/* Left button in RTL: إضافة إلى السلة */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOfferModalOpen(false);
+                    if (offerPopupLinkedItem) {
+                      if (offerPopupSpecialPrice !== undefined) {
+                        addSpecialCustomLine(
+                          `offer_${offerPopupLinkedItem.id}`,
+                          offerPopupTitle || offerPopupLinkedItem.n,
+                          offerPopupSpecialPrice,
+                          offerPopupBadge || 'عرض خاص'
+                        );
+                      } else {
+                        quickAddOrOpenModal(offerPopupLinkedItem);
+                      }
+                    } else if (offerPopupSpecialPrice !== undefined) {
+                      addSpecialCustomLine(
+                        `offer_popup_${restaurantId}`,
+                        offerPopupTitle,
+                        offerPopupSpecialPrice,
+                        offerPopupBadge || 'عرض خاص'
+                      );
+                    } else {
+                      const firstSection = document.querySelector<HTMLElement>('section[id^="mc-"]');
+                      if (firstSection) {
+                        firstSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }
+                  }}
+                  style={{
+                    border: '1px solid color-mix(in srgb, var(--pm-brand) 45%, transparent)',
+                    borderRadius: '12px',
+                    background: brandColor,
+                    color: brandInk,
+                    padding: '12px 10px',
+                    fontWeight: 800,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {offerPopupMode === 'dish' || offerPopupLinkedItem ? (offerPopupBtnText || 'إضافة إلى السلة') : (offerPopupBtnText || 'إضافة إلى السلة')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

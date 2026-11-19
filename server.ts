@@ -14,6 +14,7 @@ import {
   getInternalStoreItem,
   isSafeStoreKey,
   readAll,
+  setInternalStoreItem,
 } from './server/neon-store.ts';
 import {
   checkSupabaseHealth,
@@ -53,6 +54,7 @@ import {
   FULL_OWNER_PERMISSIONS,
   hashPasswordScrypt,
   matchesPhoneCandidates,
+  parseRequestCookies,
   requireAdminOrStaff,
   sanitizeAuthSessionForClient,
   signSid,
@@ -1366,6 +1368,116 @@ app.post('/api/telegram/webhook', async (req, res) => {
   } catch (err: any) {
     console.warn('[Telegram Webhook] Error:', err?.message || err);
     return res.json({ ok: true });
+  }
+});
+
+// 2.5. Cross-Menu Persistent Customer Profile (auto-fills across all menus & subdomains)
+const CUST_PROFILE_COOKIE = 'mp_cust_id';
+const CUST_PROFILE_KV_PREFIX = 'customer_profiles/';
+
+function setCustomerProfileCookie(res: Response, req: Request, custId: string): void {
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const reqHost = String(req.hostname || '').toLowerCase().trim();
+  const sharesSubdomains =
+    BASE_DOMAIN &&
+    (reqHost === BASE_DOMAIN || reqHost.endsWith(`.${BASE_DOMAIN}`));
+  const parts = [
+    `${CUST_PROFILE_COOKIE}=${encodeURIComponent(custId)}`,
+    'Path=/',
+    'HttpOnly',
+    isHttps ? 'SameSite=None' : 'SameSite=Lax',
+    `Max-Age=${365 * 24 * 60 * 60}`,
+  ];
+  if (sharesSubdomains) parts.push(`Domain=.${BASE_DOMAIN}`);
+  if (isHttps) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+app.get('/api/customer-profile', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const cookies = parseRequestCookies(req.headers.cookie);
+    const custId = String(cookies[CUST_PROFILE_COOKIE] || req.headers['x-customer-profile-id'] || '').trim();
+    if (!custId || !/^[a-zA-Z0-9_-]{8,64}$/.test(custId)) {
+      return res.json({ ok: true, profile: null });
+    }
+    const profile = await getInternalStoreItem<{
+      name?: string;
+      phone?: string;
+      address?: string;
+      notes?: string;
+      updatedAt?: number;
+    }>(`${CUST_PROFILE_KV_PREFIX}${custId}`).catch(() => null);
+    return res.json({ ok: true, custId, profile: profile || null });
+  } catch {
+    return res.json({ ok: true, profile: null });
+  }
+});
+
+app.post('/api/customer-profile', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const cookies = parseRequestCookies(req.headers.cookie);
+    let custId = String(cookies[CUST_PROFILE_COOKIE] || req.headers['x-customer-profile-id'] || '').trim();
+    if (!custId || !/^[a-zA-Z0-9_-]{8,64}$/.test(custId)) {
+      custId = `cust_${crypto.randomBytes(12).toString('hex')}`;
+    }
+    const body = (req.body || {}) as Record<string, unknown>;
+    const existing = await getInternalStoreItem<{
+      name?: string;
+      phone?: string;
+      address?: string;
+      notes?: string;
+      updatedAt?: number;
+    }>(`${CUST_PROFILE_KV_PREFIX}${custId}`).catch(() => null);
+
+    const nextProfile = {
+      name: String(body.name ?? existing?.name ?? '').trim().slice(0, 120),
+      phone: String(body.phone ?? existing?.phone ?? '').trim().slice(0, 40),
+      address: String(body.address ?? existing?.address ?? '').trim().slice(0, 400),
+      notes: String(body.notes ?? existing?.notes ?? '').trim().slice(0, 400),
+      updatedAt: Date.now(),
+    };
+    await setInternalStoreItem(`${CUST_PROFILE_KV_PREFIX}${custId}`, nextProfile);
+    setCustomerProfileCookie(res, req, custId);
+    return res.json({ ok: true, custId, profile: nextProfile });
+  } catch {
+    return res.status(500).json({ ok: false });
+  }
+});
+
+// 2.6. Dashboard Media Library Physical File Cleanup (called alongside cascade DB deletion)
+app.post('/api/dashboard/media/delete-file', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const ses = req.authSession;
+    if (!ses) {
+      return res.status(401).json({ ok: false, error: 'يرجى تسجيل الدخول.' });
+    }
+    const url = String((req.body || {}).url || '').trim();
+    if (!url || !url.startsWith('/uploads/')) {
+      return res.json({ ok: true, deletedFile: false });
+    }
+    const allData = await readAll(false);
+    const serialized = JSON.stringify(allData);
+    if (serialized.includes(url)) {
+      // Still referenced elsewhere in DB; do not delete physical file
+      return res.json({ ok: true, deletedFile: false });
+    }
+    const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
+    const relPath = url.replace(/^\/uploads\//, '');
+    const resolvedTarget = path.resolve(uploadsRoot, relPath);
+    if (
+      resolvedTarget.startsWith(uploadsRoot + path.sep) &&
+      fs.existsSync(resolvedTarget) &&
+      fs.statSync(resolvedTarget).isFile()
+    ) {
+      fs.unlinkSync(resolvedTarget);
+      return res.json({ ok: true, deletedFile: true });
+    }
+    return res.json({ ok: true, deletedFile: false });
+  } catch {
+    return res.json({ ok: true, deletedFile: false });
   }
 });
 

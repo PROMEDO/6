@@ -417,11 +417,19 @@ export default function App() {
     }
   }, []);
 
+  const isStorefrontRoute = route.page === 'menu' || Boolean(subdomainRestaurantId && route.page === 'home');
+
   return (
     <div className="min-h-screen">
       {/* Toast popup */}
       {toastState && (
-        <div key={toastState.id} className="toast" dir="rtl" role="status" aria-live="polite">
+        <div
+          key={toastState.id}
+          className={`toast${isStorefrontRoute ? ' is-top' : ''}`}
+          dir="rtl"
+          role="status"
+          aria-live="polite"
+        >
           <span className="toast-text">{toastState.text}</span>
           {!toastState.isError && (
             <span className="toast-check" aria-hidden="true">

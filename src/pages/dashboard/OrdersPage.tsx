@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarClock,
   Check,
+  CheckCheck,
   ChevronDown,
   Copy,
   ExternalLink,
@@ -19,6 +20,7 @@ import {
   MessageCircle,
   Phone,
   Store,
+  Trash2,
   Truck,
   User,
   Utensils,
@@ -190,6 +192,8 @@ export const OrdersPage: React.FC = () => {
     orderFilter,
     setOrderFilter,
     handleUpdateOrderStatus,
+    handleDeleteOrder,
+    handleCompleteAllOrders,
     showToast,
   } = useDashboard();
 
@@ -205,6 +209,10 @@ export const OrdersPage: React.FC = () => {
   const completedOrdersCount = allOrders.filter(
     (o) => o.st === 'completed' || o.status === 'completed'
   ).length;
+  const incompleteOrdersCount = allOrders.filter((o) => {
+    const st = String(o.st || o.status || 'new');
+    return st !== 'completed' && st !== 'cancelled';
+  }).length;
 
   const statusOptions = getOrderStatusOptions();
 
@@ -248,6 +256,27 @@ export const OrdersPage: React.FC = () => {
             <span className="mp-orders-tab-count tabular-nums">({completedOrdersCount})</span>
           </button>
         </div>
+        {incompleteOrdersCount > 0 && (
+          <button
+            type="button"
+            className="btn p"
+            onClick={() => void handleCompleteAllOrders()}
+            style={{
+              height: '38px',
+              borderRadius: '10px',
+              padding: '0 14px',
+              fontSize: '12.5px',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexShrink: 0,
+            }}
+          >
+            <CheckCheck size={15} />
+            <span>أكمل كل الطلبات ({incompleteOrdersCount})</span>
+          </button>
+        )}
       </motion.div>
 
       {filteredOrders.length === 0 ? (
@@ -766,6 +795,24 @@ export const OrdersPage: React.FC = () => {
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDeleteOrder(selectedOrder.id, () => {
+                          setSelectedOrderId(null);
+                          setStatusPickerOrderId(null);
+                        })
+                      }
+                      className="mp-order-modal-status-btn"
+                      style={{
+                        borderColor: 'rgba(239, 68, 68, 0.4)',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        color: '#ef4444',
+                      }}
+                    >
+                      <Trash2 size={13} strokeWidth={2.3} />
+                      <span>حذف الطلب نهائياً</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -857,6 +904,28 @@ export const OrdersPage: React.FC = () => {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetId = statusPickerOrder.id;
+                    setStatusPickerOrderId(null);
+                    handleDeleteOrder(targetId, () => {
+                      if (selectedOrderId === targetId) setSelectedOrderId(null);
+                    });
+                  }}
+                  className="mp-status-picker-option"
+                  style={{
+                    borderColor: 'rgba(239, 68, 68, 0.42)',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    marginTop: '4px',
+                  }}
+                >
+                  <span className="mp-status-picker-opt-main">
+                    <Trash2 size={14} strokeWidth={2.3} aria-hidden="true" />
+                    <span>حذف الطلب نهائياً</span>
+                  </span>
+                </button>
               </div>
             </motion.div>
           </div>

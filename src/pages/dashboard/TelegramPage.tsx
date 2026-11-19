@@ -432,8 +432,11 @@ export const TelegramPage: React.FC = () => {
           transition={{ duration: 0.88, ease: [0.16, 1, 0.3, 1] }}
           style={{ ...surfaceCardStyle, padding: '22px' }}
         >
-          {botUnavailable && (
-            <div className="mp-inline-status is-err" style={{ marginBottom: '16px' }}>
+          {botUnavailable && status?.orderChannel !== 'whatsapp' && (
+            <div
+              className={`mp-inline-status ${botTokenRejected ? 'is-err' : 'is-warn'}`}
+              style={{ marginBottom: '16px' }}
+            >
               <AlertCircle size={17} style={{ flexShrink: 0 }} />
               <span>
                 {!status?.botConfigured
@@ -842,7 +845,7 @@ export const TelegramPage: React.FC = () => {
                 label: 'توكن البوت وتفعيله',
                 ok: Boolean(status.botConfigured && status.botEnabled && status.botTokenValid !== false),
                 detail: !status.botConfigured
-                  ? 'غير مضبوط في المنصة (TELEGRAM_BOT_TOKEN)'
+                  ? 'غير مضبوط في المنصة بعد'
                   : status.botTokenValid === false
                   ? 'توكن البوت مرفوض من تيليجرام — حدّث التوكن من @BotFather'
                   : !status.botEnabled
@@ -851,31 +854,29 @@ export const TelegramPage: React.FC = () => {
               },
               {
                 label: 'اتصال البوت بالخادم',
-                ok: Boolean(
-                  status.pollingActive &&
-                    !status.lastPollError &&
-                    (status.pollingHealthy || status.lastPollSuccessAt)
-                ),
+                ok: Boolean(status.pollingActive && !status.lastPollError && !status.botTokenError),
                 detail: status.lastPollError
                   ? status.lastPollError
                   : status.botTokenError
                   ? status.botTokenError
                   : status.lastSendError
                   ? `تعذر إرسال الرد: ${status.lastSendError}`
-                  : status.pollingHealthy || status.pollingActive
+                  : status.pollingActive
                   ? 'يعمل ويستقبل رسائل الربط ✓'
-                  : 'متوقف أو بانتظار توكن البوت',
+                  : 'بانتظار التفعيل',
               },
               {
                 label: 'ربط حساب المتجر',
                 ok: status.linked,
                 detail: status.linked
                   ? `مربوط (${status.telegramPhone || 'تم التحقق'})`
+                  : status.orderChannel === 'whatsapp'
+                  ? 'غير مربوط (اختياري لأن قناة الطلبات هي واتساب فقط)'
                   : 'غير مربوط — أدخل الرقم واضغط ربط الرقم مع البوت ثم شارك جهة الاتصال',
               },
               {
                 label: 'قناة الطلبات المختارة',
-                ok: status.orderChannel !== 'whatsapp',
+                ok: true,
                 detail: channelLabel,
               },
             ].map((item) => (
@@ -894,7 +895,7 @@ export const TelegramPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)' }}>{item.label}</span>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: item.ok ? '#10b981' : '#f59e0b' }}>
-                    {item.ok ? '✓ سليم' : '! تنبيه'}
+                    {item.ok ? '✓ سليم' : '! غير مكتمل'}
                   </span>
                 </div>
                 <span style={{ fontSize: '11.5px', color: 'var(--muted)', wordBreak: 'break-word' }}>{item.detail}</span>
@@ -902,7 +903,7 @@ export const TelegramPage: React.FC = () => {
             ))}
           </div>
 
-          {(status.lastPollError || status.lastSendError) && (
+          {status.orderChannel !== 'whatsapp' && (status.lastPollError || status.lastSendError) && (
             <div className="mp-inline-status is-err" style={{ marginTop: '2px' }}>
               <AlertCircle size={17} style={{ flexShrink: 0 }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Clock,
@@ -326,28 +327,42 @@ export const CategoriesPage: React.FC = () => {
       </motion.div>
 
       {/* Add / Edit Category Modal (clean name + image picker only) */}
-      {showCatModal && (
-        <>
-          <div className="drawer-backdrop" onClick={() => setShowCatModal(false)} />
-          <motion.div
-            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      {showCatModal && (() => {
+        const catModalNode = (
+          <div
+            onClick={() => setShowCatModal(false)}
+            dir="rtl"
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'min(500px, 92vw)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              ...surfaceCardStyle,
-              borderRadius: '20px',
-              padding: '20px 22px 22px',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              background: 'rgba(0, 0, 0, 0.62)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
               zIndex: 99999,
-              boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
             }}
           >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={editingCatId ? 'تعديل القسم' : 'إضافة قسم'}
+              onClick={(e) => e.stopPropagation()}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: 'min(500px, 100%)',
+                maxHeight: 'calc(100dvh - 32px)',
+                overflowY: 'auto',
+                ...surfaceCardStyle,
+                borderRadius: '20px',
+                padding: '20px 22px 22px',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+              }}
+            >
             <div
               style={{
                 display: 'flex',
@@ -509,33 +524,49 @@ export const CategoriesPage: React.FC = () => {
                 )}
               </div>
             </form>
-          </motion.div>
-        </>
-      )}
+            </motion.div>
+          </div>
+        );
+        return typeof document !== 'undefined' ? createPortal(catModalNode, document.body) : catModalNode;
+      })()}
 
       {/* Dedicated Schedule / Timer Modal opened from the row Clock button */}
-      {scheduleModalCat && (
-        <>
-          <div className="drawer-backdrop" onClick={() => setScheduleModalCat(null)} />
-          <motion.div
-            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      {scheduleModalCat && (() => {
+        const schedModalNode = (
+          <div
+            onClick={() => setScheduleModalCat(null)}
+            dir="rtl"
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'min(480px, 94vw)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              ...surfaceCardStyle,
-              borderRadius: '20px',
-              padding: '18px 16px 20px',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              background: 'rgba(0, 0, 0, 0.62)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
               zIndex: 99999,
-              boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
             }}
           >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`توقيت توفر: ${scheduleModalCat.n}`}
+              onClick={(e) => e.stopPropagation()}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: 'min(480px, 100%)',
+                maxHeight: 'calc(100dvh - 32px)',
+                overflowY: 'auto',
+                ...surfaceCardStyle,
+                borderRadius: '20px',
+                padding: '18px 16px 20px',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+              }}
+            >
             <div
               style={{
                 display: 'flex',
@@ -605,9 +636,11 @@ export const CategoriesPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </motion.div>
-        </>
-      )}
+            </motion.div>
+          </div>
+        );
+        return typeof document !== 'undefined' ? createPortal(schedModalNode, document.body) : schedModalNode;
+      })()}
 
       <MediaLibraryModal
         isOpen={showMediaLibrary}

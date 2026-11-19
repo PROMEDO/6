@@ -3,22 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertCircle,
   CheckCircle2,
   Edit,
   Eye,
+  Image as ImageIcon,
   Plus,
   Sparkles,
   Trash2,
-  Upload,
   Volume2,
   X,
 } from 'lucide-react';
 import { ADDON_CATALOG } from '../../data/addonsCatalog';
 import { formatNumber } from '../../utils/storage';
+import { MediaLibraryModal } from '../../components/MediaLibraryModal';
 import {
   getAddonRequiredPlanLabel,
   getAddonRequiredPlanTier,
@@ -37,6 +38,7 @@ function formatHourArabic(hour: number): string {
 
 export const AddonsPage: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
+  const [showOfferMediaLibrary, setShowOfferMediaLibrary] = useState(false);
   const {
     rest,
     resolvedPlan,
@@ -57,7 +59,9 @@ export const AddonsPage: React.FC = () => {
     handleToggleAddon,
     handleOpenAddonEdit,
     handleSaveAddonEdit,
-    handleDeviceImageUpload,
+    mediaLibraryItems,
+    uploadImagesToLibrary,
+    removeMediaLibraryItem,
     openUpgradeModal,
   } = useDashboard();
 
@@ -272,89 +276,198 @@ export const AddonsPage: React.FC = () => {
                   </div>
                 )}
 
-                {editingAddonKey === 'offerPopup' && (
-                  <>
-                    <label className="f">
-                      عنوان النافذة المنبثقة *
-                      <input
-                        type="text"
-                        value={addonDraft.title || ''}
-                        onChange={(e) => updateDraft((p) => ({ ...p, title: e.target.value }))}
-                        style={themedInputStyle}
-                        required
-                      />
-                    </label>
-                    <label className="f">
-                      تفاصيل العرض
-                      <textarea
-                        rows={2}
-                        value={addonDraft.subtitle || ''}
-                        onChange={(e) => updateDraft((p) => ({ ...p, subtitle: e.target.value }))}
-                        style={themedInputStyle}
-                      />
-                    </label>
-                    <div className="f">
-                      <span>صورة العرض (رابط أو رفع من الجهاز)</span>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={addonDraft.image || ''}
-                          onChange={(e) => updateDraft((p) => ({ ...p, image: e.target.value }))}
-                          placeholder="https://..."
-                          style={{ ...themedInputStyle, flex: 1 }}
-                        />
-                        <label
-                          className="btn s"
-                          style={{ cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                        >
-                          <Upload size={13} />
-                          <span>رفع صورة</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={(e) =>
-                              void handleDeviceImageUpload(
-                                e,
-                                (url) => updateDraft((p) => ({ ...p, image: url })),
-                                'تم رفع صورة الإعلان',
-                                'item'
-                              )
-                            }
-                          />
-                        </label>
+                {editingAddonKey === 'offerPopup' && (() => {
+                  const popupMode = addonDraft.mode === 'dish' ? 'dish' : 'ad';
+                  const selectedDish = addonDraft.itemId
+                    ? allItems.find((it) => it.id === addonDraft.itemId)
+                    : undefined;
+
+                  return (
+                    <>
+                      <div className="f">
+                        <span>نوع النافذة المنبثقة *</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => updateDraft((p) => ({ ...p, mode: 'ad' }))}
+                            className={`btn s ${popupMode === 'ad' ? 'p' : ''}`}
+                            style={{ fontWeight: 800, fontSize: '12.5px', justifyContent: 'center' }}
+                          >
+                            إعلان معين
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateDraft((p) => ({ ...p, mode: 'dish' }))}
+                            className={`btn s ${popupMode === 'dish' ? 'p' : ''}`}
+                            style={{ fontWeight: 800, fontSize: '12.5px', justifyContent: 'center' }}
+                          >
+                            عرض خاص لطبق
+                          </button>
+                        </div>
                       </div>
-                      {addonDraft.image && (
-                        <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--line)', height: '110px' }}>
-                          <img
-                            src={addonDraft.image}
-                            alt="معاينة صورة البوب اب"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          />
+
+                      <label className="f">
+                        {popupMode === 'dish' ? 'اختر الطبق للعرض الخاص *' : 'ربط بطبق عند الضغط على "إضافة إلى السلة" (اختياري)'}
+                        <select
+                          value={addonDraft.itemId || ''}
+                          onChange={(e) => {
+                            const nextItemId = e.target.value;
+                            const chosen = allItems.find((it) => it.id === nextItemId);
+                            updateDraft((p) => ({
+                              ...p,
+                              itemId: nextItemId,
+                              title:
+                                chosen && (!p.title || p.title === selectedDish?.n || p.title === 'عرض خاص لفترة محدودة!')
+                                  ? chosen.n
+                                  : p.title,
+                              subtitle:
+                                chosen && (!p.subtitle || p.subtitle === selectedDish?.d)
+                                  ? (chosen.d || `اطلب ${chosen.n} الآن بسعر العرض`)
+                                  : p.subtitle,
+                              image:
+                                chosen && (!p.image || p.image === selectedDish?.img)
+                                  ? (chosen.img || '')
+                                  : p.image,
+                            }));
+                          }}
+                          style={themedInputStyle}
+                        >
+                          <option value="">
+                            {popupMode === 'dish' ? '— اختر طبقاً من المنيو —' : '— بدون طبق محدد (تصفح المنيو) —'}
+                          </option>
+                          {allItems.map((it) => (
+                            <option key={it.id} value={it.id}>
+                              {it.n} ({formatNumber(Number(it.pr) || 0)} {currency})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {(popupMode === 'dish' || addonDraft.itemId) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <label className="f">
+                            سعر العرض الخاص ({currency})
+                            <input
+                              type="number"
+                              min={0}
+                              dir="ltr"
+                              value={addonDraft.specialPrice ?? ''}
+                              onChange={(e) =>
+                                updateDraft((p) => ({
+                                  ...p,
+                                  specialPrice: e.target.value === '' ? '' : Number(e.target.value),
+                                }))
+                              }
+                              placeholder={selectedDish ? String(selectedDish.pr) : 'اختياري'}
+                              style={themedInputStyle}
+                            />
+                          </label>
+                          <label className="f">
+                            شارة العرض (اختياري)
+                            <input
+                              type="text"
+                              value={addonDraft.badgeText || ''}
+                              onChange={(e) => updateDraft((p) => ({ ...p, badgeText: e.target.value }))}
+                              placeholder="مثال: عرض خاص 🔥"
+                              style={themedInputStyle}
+                            />
+                          </label>
                         </div>
                       )}
-                    </div>
-                    <label className="f">
-                      نص الزر
-                      <input
-                        type="text"
-                        value={addonDraft.buttonText || ''}
-                        onChange={(e) => updateDraft((p) => ({ ...p, buttonText: e.target.value }))}
-                        style={themedInputStyle}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="btn s"
-                      onClick={() => setShowPopupPreview(true)}
-                      style={{ marginBottom: '6px' }}
-                    >
-                      <Eye size={14} />
-                      <span>معاينة شكل البوب اب للزبون</span>
-                    </button>
-                  </>
-                )}
+
+                      <label className="f">
+                        عنوان النافذة المنبثقة *
+                        <input
+                          type="text"
+                          value={addonDraft.title || ''}
+                          onChange={(e) => updateDraft((p) => ({ ...p, title: e.target.value }))}
+                          style={themedInputStyle}
+                          required
+                        />
+                      </label>
+                      <label className="f">
+                        تفاصيل الإعلان أو العرض
+                        <textarea
+                          rows={2}
+                          value={addonDraft.subtitle || ''}
+                          onChange={(e) => updateDraft((p) => ({ ...p, subtitle: e.target.value }))}
+                          style={themedInputStyle}
+                        />
+                      </label>
+                      <div className="f">
+                        <span>صورة العرض (من مكتبة الصور أو رابط)</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="btn p"
+                            onClick={() => setShowOfferMediaLibrary(true)}
+                            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
+                          >
+                            <ImageIcon size={14} />
+                            <span>اختيار من مكتبة الصور</span>
+                          </button>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            value={addonDraft.image || ''}
+                            onChange={(e) => updateDraft((p) => ({ ...p, image: e.target.value }))}
+                            placeholder="https://..."
+                            style={{ ...themedInputStyle, flex: 1, minWidth: '160px' }}
+                          />
+                        </div>
+                        {addonDraft.image && (
+                          <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--line)', height: '110px', position: 'relative' }}>
+                            <img
+                              src={addonDraft.image}
+                              alt="معاينة صورة البوب اب"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateDraft((p) => ({ ...p, image: '' }))}
+                              aria-label="إزالة الصورة"
+                              style={{
+                                position: 'absolute',
+                                top: '6px',
+                                insetInlineStart: '6px',
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '50%',
+                                background: 'rgba(239,68,68,0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'grid',
+                                placeItems: 'center',
+                              }}
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <label className="f">
+                        نص زر الإضافة / الطلب (الزر الأيسر)
+                        <input
+                          type="text"
+                          value={addonDraft.buttonText || 'إضافة إلى السلة'}
+                          onChange={(e) => updateDraft((p) => ({ ...p, buttonText: e.target.value }))}
+                          placeholder="إضافة إلى السلة"
+                          style={themedInputStyle}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="btn s"
+                        onClick={() => setShowPopupPreview(true)}
+                        style={{ marginBottom: '6px' }}
+                      >
+                        <Eye size={14} />
+                        <span>معاينة شكل البوب اب للزبون</span>
+                      </button>
+                    </>
+                  );
+                })()}
 
                 {editingAddonKey === 'announcementBar' && (
                   <>
@@ -1797,24 +1910,66 @@ export const AddonsPage: React.FC = () => {
             )}
 
             <div style={{ padding: '22px' }}>
+              {(addonDraft.badgeText || addonsState.offerPopup?.badgeText) && (
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: 'var(--soft)',
+                    color: 'var(--brand)',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    marginBottom: '8px',
+                  }}
+                >
+                  {addonDraft.badgeText || addonsState.offerPopup?.badgeText}
+                </div>
+              )}
               <h3 style={{ fontSize: '19px', fontWeight: 900, color: 'var(--ink)', margin: '0 0 8px' }}>
                 {addonDraft.title || addonsState.offerPopup?.title}
               </h3>
-              <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
                 {addonDraft.subtitle || addonsState.offerPopup?.subtitle}
               </p>
-              <button
-                type="button"
-                onClick={() => setShowPopupPreview(false)}
-                className="btn p b"
-                style={{ fontWeight: 800 }}
-              >
-                {addonDraft.buttonText || addonsState.offerPopup?.buttonText || 'تصفح المنيو'}
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '10px' }} dir="rtl">
+                <button
+                  type="button"
+                  onClick={() => setShowPopupPreview(false)}
+                  className="btn s"
+                  style={{ fontWeight: 800, justifyContent: 'center' }}
+                >
+                  إخفاء
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPopupPreview(false)}
+                  className="btn p"
+                  style={{ fontWeight: 800, justifyContent: 'center' }}
+                >
+                  {addonDraft.buttonText || addonsState.offerPopup?.buttonText || 'إضافة إلى السلة'}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
       )}
+
+      <MediaLibraryModal
+        isOpen={showOfferMediaLibrary}
+        items={mediaLibraryItems}
+        currentUrl={addonDraft.image || ''}
+        onSelect={(url) => updateDraft((p) => ({ ...p, image: url }))}
+        onUploadFiles={uploadImagesToLibrary}
+        onDeleteItem={(mediaId) => {
+          const target = mediaLibraryItems.find((m) => m.id === mediaId);
+          if (target && target.url === addonDraft.image) {
+            updateDraft((p) => ({ ...p, image: '' }));
+          }
+          removeMediaLibraryItem(mediaId);
+        }}
+        onClose={() => setShowOfferMediaLibrary(false)}
+      />
     </div>
   );
 };

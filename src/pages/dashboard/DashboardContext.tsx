@@ -40,6 +40,7 @@ import {
   compressImage,
   copyTextReliable,
   deleteItem,
+  deleteItemAndSync,
   flushPendingDbSync,
   getCollection,
   getItem,
@@ -48,6 +49,7 @@ import {
   isSlugAvailable,
   putItem,
   putItemAndSync,
+  putManyAndSync,
   resolveEffectiveThemeMode,
   syncFromServer,
   uid,
@@ -1341,10 +1343,18 @@ function useDashboardController({
       offerPopup: {
         ...(latestRest.offerPopup || {}),
         enabled: Boolean(nextAddons.offerPopup?.enabled),
+        mode: nextAddons.offerPopup?.mode === 'dish' ? 'dish' : 'ad',
+        itemId: nextAddons.offerPopup?.itemId || '',
+        specialPrice:
+          nextAddons.offerPopup?.specialPrice !== undefined &&
+          nextAddons.offerPopup?.specialPrice !== null
+            ? Number(nextAddons.offerPopup.specialPrice)
+            : undefined,
+        badgeText: nextAddons.offerPopup?.badgeText || '',
         title: nextAddons.offerPopup?.title || '',
         subtitle: nextAddons.offerPopup?.subtitle || '',
         image: nextAddons.offerPopup?.image || '',
-        buttonText: nextAddons.offerPopup?.buttonText || 'تصفح المنيو واطلب الآن',
+        buttonText: nextAddons.offerPopup?.buttonText || 'إضافة إلى السلة',
       },
       showHealthInfoPopup: Boolean(nextAddons.healthNotices?.enabled),
       healthNotices: healthLines.length > 0 ? healthLines : latestRest.healthNotices,
@@ -1427,12 +1437,30 @@ function useDashboardController({
     };
 
     if (keySnapshot === 'offerPopup') {
-      const title = String(draftSnapshot.title || '').trim();
+      const mode = draftSnapshot.mode === 'dish' ? 'dish' : 'ad';
+      const itemId = String(draftSnapshot.itemId || '').trim();
+      const linkedDish = itemId ? allItems.find((it) => it.id === itemId) : undefined;
+      let title = String(draftSnapshot.title || '').trim();
+      if (mode === 'dish' && !itemId) {
+        return { ok: false, error: 'يرجى اختيار الطبق المطلوب للعرض الخاص.' };
+      }
+      if (!title && linkedDish?.n) {
+        title = linkedDish.n;
+      }
       if (!title) return { ok: false, error: 'يرجى إدخال عنوان النافذة المنبثقة.' };
+      const rawSpecial = draftSnapshot.specialPrice;
+      const parsedSpecial =
+        rawSpecial !== '' && rawSpecial !== undefined && rawSpecial !== null && Number.isFinite(Number(rawSpecial))
+          ? Math.max(0, Number(rawSpecial))
+          : undefined;
+      draftSnapshot.mode = mode;
+      draftSnapshot.itemId = itemId;
+      draftSnapshot.specialPrice = parsedSpecial;
+      draftSnapshot.badgeText = String(draftSnapshot.badgeText || '').trim();
       draftSnapshot.title = title;
       draftSnapshot.subtitle = String(draftSnapshot.subtitle || '').trim();
-      draftSnapshot.image = String(draftSnapshot.image || '').trim();
-      draftSnapshot.buttonText = String(draftSnapshot.buttonText || 'تصفح المنيو واطلب الآن').trim();
+      draftSnapshot.image = String(draftSnapshot.image || (mode === 'dish' ? linkedDish?.img || '' : '')).trim();
+      draftSnapshot.buttonText = String(draftSnapshot.buttonText || 'إضافة إلى السلة').trim();
     }
 
     if (keySnapshot === 'announcementBar') {
@@ -1873,13 +1901,118 @@ function useDashboardController({
     const baseList = Array.isArray(latestRest.mediaLibrary)
       ? latestRest.mediaLibrary
       : mediaLibraryItems;
-    const nextList = baseList.filter((m) => m.id !== mediaId);
-    putItem<Restaurant>(`restaurants/${rid}`, {
-      ...latestRest,
-      mediaLibrary: nextList,
+    const targetItem = baseList.find((m) => m.id === mediaId);
+    const deletedUrl = String(targetItem?.url || '').trim();
+    const nextList = baseList.filter((m) => m.id !== mediaId && (!deletedUrl || m.url !== deletedUrl));
+
+    const putBatch: Record<string, unknown> = {};
+    const allRests = getCollection<Restaurant>('restaurants');
+    const relatedRests = allRests.filter(
+      (r) => r.id === rid || r.id === mainRid || r.parentRid === mainRid
+    );
+    const relatedRids = new Set(relatedRests.map((r) => r.id));
+    relatedRids.add(rid);
+
+    for (const r of relatedRests) {
+      let changed = r.id === rid;
+      const rMedia = Array.isArray(r.mediaLibrary)
+        ? r.mediaLibrary.filter((m) => m.id !== mediaId && (!deletedUrl || m.url !== deletedUrl))
+        : r.id === rid
+        ? nextList
+        : undefined;
+      if (Array.isArray(r.mediaLibrary) && rMedia && rMedia.length !== r.mediaLibrary.length) {
+        changed = true;
+      }
+
+      let nextLogo = r.logo;
+      if (deletedUrl && r.logo === deletedUrl) {
+        nextLogo = '';
+        changed = true;
+      }
+      let nextAboutImage = r.aboutImage;
+      if (deletedUrl && r.aboutImage === deletedUrl) {
+        nextAboutImage = '';
+        changed = true;
+      }
+      let nextCovers = r.coverImages;
+      if (deletedUrl && Array.isArray(r.coverImages) && r.coverImages.includes(deletedUrl)) {
+        nextCovers = r.coverImages.filter((c) => c !== deletedUrl);
+        changed = true;
+      }
+      let nextOfferPopup = r.offerPopup;
+      if (deletedUrl && r.offerPopup?.image === deletedUrl) {
+        nextOfferPopup = { ...r.offerPopup, image: '' };
+        changed = true;
+      }
+      let nextAddons = r.addons;
+      if (deletedUrl && r.addons?.offerPopup?.image === deletedUrl) {
+        nextAddons = {
+          ...r.addons,
+          offerPopup: { ...r.addons.offerPopup, image: '' },
+        };
+        changed = true;
+      }
+
+      if (changed) {
+        putBatch[`restaurants/${r.id}`] = {
+          ...r,
+          ...(rMedia !== undefined ? { mediaLibrary: rMedia } : {}),
+          logo: nextLogo,
+          aboutImage: nextAboutImage,
+          coverImages: nextCovers,
+          offerPopup: nextOfferPopup,
+          addons: nextAddons,
+        };
+      }
+    }
+
+    if (deletedUrl) {
+      getCollection<Category>('cats').forEach((cat) => {
+        if (relatedRids.has(cat.rid) && cat.img === deletedUrl) {
+          putBatch[`cats/${cat.id}`] = { ...cat, img: '' };
+        }
+      });
+      getCollection<MenuItem>('items').forEach((it) => {
+        if (relatedRids.has(it.rid) && it.img === deletedUrl) {
+          putBatch[`items/${it.id}`] = { ...it, img: '' };
+        }
+      });
+
+      if (logoUrlInput === deletedUrl) setLogoUrlInput('');
+      if (coverUrlInput === deletedUrl) setCoverUrlInput('');
+      if (catImageInput === deletedUrl) setCatImageInput('');
+      if (formImage === deletedUrl) setFormImage('');
+      if (addonDraft?.image === deletedUrl) {
+        setAddonDraft((prev) => ({ ...prev, image: '' }));
+      }
+      if (addonsState.offerPopup?.image === deletedUrl) {
+        setAddonsState((prev) => ({
+          ...prev,
+          offerPopup: prev.offerPopup ? { ...prev.offerPopup, image: '' } : prev.offerPopup,
+        }));
+      }
+    }
+
+    if (!putBatch[`restaurants/${rid}`]) {
+      putBatch[`restaurants/${rid}`] = {
+        ...latestRest,
+        mediaLibrary: nextList,
+      };
+    }
+
+    void putManyAndSync(putBatch).then(() => {
+      onRefresh();
     });
+    if (deletedUrl) {
+      void fetch('/api/dashboard/media/delete-file', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: deletedUrl }),
+      }).catch(() => {});
+    }
     onRefresh();
-    showToast('تم تطبيق التغيرات');
+    showToast('تم حذف الصورة نهائياً من كل الملفات وقاعدة البيانات');
   };
 
   const handleDeviceImageUpload = async (
@@ -3069,6 +3202,45 @@ function useDashboardController({
     showToast('تم تطبيق التغيرات');
   };
 
+  const handleDeleteOrder = (orderId: string, onAfterConfirm?: () => void) => {
+    const target = allOrders.find((x) => x.id === orderId);
+    if (!target) return;
+    triggerAjaxConfirm(
+      'حذف الطلب نهائياً',
+      'هل أنت متأكد من حذف هذا الطلب نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
+      'danger',
+      'نعم، احذف نهائياً',
+      async () => {
+        await deleteItemAndSync(`orders/${orderId}`);
+        onAfterConfirm?.();
+        onRefresh();
+      },
+      'تم حذف الطلب نهائياً ✓'
+    );
+  };
+
+  const handleCompleteAllOrders = async () => {
+    const incomplete = allOrders.filter((o) => {
+      const st = String(o.st || o.status || 'new');
+      return st !== 'completed' && st !== 'cancelled';
+    });
+    if (incomplete.length === 0) {
+      showToast('جميع الطلبات مكتملة بالفعل ✓');
+      return;
+    }
+    const batch: Record<string, unknown> = {};
+    for (const ord of incomplete) {
+      batch[`orders/${ord.id}`] = {
+        ...ord,
+        st: 'completed',
+        status: 'completed' as OrderStatus,
+      };
+    }
+    await putManyAndSync(batch);
+    onRefresh();
+    showToast(`تم إكمال ${incomplete.length} طلب بنجاح ✓`);
+  };
+
   const filteredCategories = allCategories.filter((c) => {
     if (!searchCatQuery.trim()) return true;
     return (
@@ -3313,6 +3485,8 @@ function useDashboardController({
     orderFilter,
     setOrderFilter,
     handleUpdateOrderStatus,
+    handleDeleteOrder,
+    handleCompleteAllOrders,
     restProjectType,
     setRestProjectType,
     restName,

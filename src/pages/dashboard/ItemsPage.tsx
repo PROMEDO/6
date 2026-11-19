@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertTriangle,
@@ -1616,28 +1617,42 @@ export const ItemsPage: React.FC = () => {
       </motion.div>
 
       {/* Dedicated Schedule / Timer Modal opened from the row Clock button */}
-      {scheduleModalItem && (
-        <>
-          <div className="drawer-backdrop" onClick={() => setScheduleModalItem(null)} />
-          <motion.div
-            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      {scheduleModalItem && (() => {
+        const schedModalNode = (
+          <div
+            onClick={() => setScheduleModalItem(null)}
+            dir="rtl"
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'min(480px, 94vw)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              ...surfaceCardStyle,
-              borderRadius: '20px',
-              padding: '18px 16px 20px',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              background: 'rgba(0, 0, 0, 0.62)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
               zIndex: 99999,
-              boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
             }}
           >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`توقيت توفر: ${scheduleModalItem.n}`}
+              onClick={(e) => e.stopPropagation()}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: 'min(480px, 100%)',
+                maxHeight: 'calc(100dvh - 32px)',
+                overflowY: 'auto',
+                ...surfaceCardStyle,
+                borderRadius: '20px',
+                padding: '18px 16px 20px',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+              }}
+            >
             <div
               style={{
                 display: 'flex',
@@ -1707,30 +1722,48 @@ export const ItemsPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </motion.div>
-        </>
-      )}
+            </motion.div>
+          </div>
+        );
+        return typeof document !== 'undefined' ? createPortal(schedModalNode, document.body) : schedModalNode;
+      })()}
 
-      {showBatchModal && (
-        <>
-          <div className="drawer-backdrop" onClick={() => setShowBatchModal(false)} />
-          <motion.div
-            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      {showBatchModal && (() => {
+        const batchModalNode = (
+          <div
+            onClick={() => setShowBatchModal(false)}
+            dir="rtl"
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'min(480px, 92vw)',
-              ...surfaceCardStyle,
-              borderRadius: '20px',
-              padding: '24px',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              background: 'rgba(0, 0, 0, 0.62)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
               zIndex: 99999,
-              boxShadow: '0 20px 50px rgba(0,0,0,0.35)',
             }}
           >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="إضافة عناصر سريعة بالجملة"
+              onClick={(e) => e.stopPropagation()}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: 'min(480px, 100%)',
+                maxHeight: 'calc(100dvh - 32px)',
+                overflowY: 'auto',
+                ...surfaceCardStyle,
+                borderRadius: '20px',
+                padding: '24px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.35)',
+              }}
+            >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--brand-ink, #34D399)', margin: 0 }}>
                 إضافة عناصر سريعة بالجملة ✨
@@ -1767,9 +1800,11 @@ export const ItemsPage: React.FC = () => {
                 إضافة العناصر للمنيو
               </button>
             </div>
-          </motion.div>
-        </>
-      )}
+            </motion.div>
+          </div>
+        );
+        return typeof document !== 'undefined' ? createPortal(batchModalNode, document.body) : batchModalNode;
+      })()}
     </div>
   );
 };

@@ -412,6 +412,10 @@ export interface RestaurantAddons {
   offerPopup?: {
     configured?: boolean;
     enabled?: boolean;
+    mode?: 'ad' | 'dish';
+    itemId?: string;
+    specialPrice?: number;
+    badgeText?: string;
     title?: string;
     subtitle?: string;
     image?: string;
@@ -780,6 +784,10 @@ export interface Restaurant {
   freeDeliveryMin?: number;
   offerPopup?: {
     enabled?: boolean;
+    mode?: 'ad' | 'dish';
+    itemId?: string;
+    specialPrice?: number;
+    badgeText?: string;
     title?: string;
     subtitle?: string;
     text?: string;

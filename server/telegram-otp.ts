@@ -202,6 +202,7 @@ let cachedTelegramConfig: TelegramBotConfig = { ...DEFAULT_TELEGRAM_CONFIG };
 let hasLoadedConfigFromKv = false;
 let lastPollError = '';
 let lastSendError = '';
+const lastSendErrorByRid = new Map<string, string>();
 let lastTokenError = '';
 let lastTokenErrorAt = 0;
 let lastPollSuccessAt = 0;
@@ -1448,7 +1449,8 @@ export async function getTelegramOrderLinkStatus(rid: string): Promise<{
   const botTokenValid = Boolean(effectiveToken && !lastTokenError);
   const socialObj = (rest.social && typeof rest.social === 'object' ? rest.social : {}) as Record<string, unknown>;
   const whatsappConfigured = Boolean(String(socialObj.whatsapp || rest.ph || '').trim());
-  const pollingHealthy = Boolean(isPollingActive && !lastPollError && lastPollSuccessAt > 0);
+  const pollingHealthy = Boolean(isPollingActive && !lastPollError && (lastPollSuccessAt > 0 || !consecutiveAuthErrors));
+  const storeSendError = lastSendErrorByRid.get(cleanRid) || '';
 
   return {
     ok: true,
@@ -1457,10 +1459,10 @@ export async function getTelegramOrderLinkStatus(rid: string): Promise<{
     orderChannel,
     whatsappConfigured,
     telegramSendReady: Boolean(botConfigured && botTokenValid && botEnabled && telegramChatId && enabled),
-    pollingActive: Boolean(isPollingActive && !lastPollError),
+    pollingActive: Boolean(isPollingActive),
     pollingHealthy,
     lastPollError: lastPollError || null,
-    lastSendError: lastSendError || null,
+    lastSendError: storeSendError || null,
     lastPollSuccessAt: lastPollSuccessAt || null,
     botEnabled,
     botConfigured,
@@ -1708,12 +1710,12 @@ export function formatOrderTelegramMessage(
     Number.isFinite(lng) &&
     (lat !== 0 || lng !== 0)
   ) {
-    const googleMapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+    const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
     const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
     lines.push(divider);
     lines.push('📍 <b>الموقع:</b>');
-    lines.push(`Google Maps: <code>${escapeHtml(googleMapsUrl)}</code>`);
-    lines.push(`Waze: <code>${escapeHtml(wazeUrl)}</code>`);
+    lines.push(`Google Maps: <a href="${escapeHtml(googleMapsUrl)}">${escapeHtml(googleMapsUrl)}</a>`);
+    lines.push(`Waze: <a href="${escapeHtml(wazeUrl)}">${escapeHtml(wazeUrl)}</a>`);
   }
 
   if (footer && footer !== 'تواصل مع الزبون أو تابع تفاصيل الطلب من لوحة التحكم.') {
@@ -1749,10 +1751,10 @@ export async function sendOrderNotificationToTelegram(
 
   await syncTelegramUsersFromSupabase();
 
+  const rid = String(restaurant.id || '').trim();
   let chatId: number | string | null = String(restaurant.telegramChatId || '').trim() || null;
   let storePhone = String(restaurant.telegramPhone || '').trim();
   if (!chatId && restaurant.telegramUnlinkedManually !== true) {
-    const rid = String(restaurant.id || '').trim();
     const allData = rid ? await readAll(false) : {};
     const candidates = rid
       ? collectRestaurantPhoneCandidates(rid, restaurant, allData)
@@ -1781,10 +1783,11 @@ export async function sendOrderNotificationToTelegram(
 
   const text = formatOrderTelegramMessage(restaurant, order, false);
   const ok = await sendTelegramMessage(chatId, text);
-  if (ok && storePhone) {
-    recordMessageSent(storePhone);
-  }
-  if (!ok) {
+  if (ok) {
+    if (rid) lastSendErrorByRid.delete(rid);
+    if (storePhone) recordMessageSent(storePhone);
+  } else {
+    if (rid) lastSendErrorByRid.set(rid, lastSendError || 'تعذر إرسال الطلب عبر تيليجرام');
     console.warn(`[Telegram Order] Failed sending order #${String(order.id || '').slice(-6)} to chatId=${chatId}: ${lastSendError || 'unknown'}`);
   }
   return { sent: ok, ...(ok ? {} : { reason: lastSendError || 'telegram_send_failed' }) };
@@ -1840,8 +1843,10 @@ export async function sendPartnerTestOrderNotification(rid: string): Promise<{
   const text = formatOrderTelegramMessage(rest, sampleOrder, true);
   const sent = await sendTelegramMessage(chatId, text);
   if (!sent) {
+    lastSendErrorByRid.set(rid, lastSendError || 'تعذر إرسال الطلب التجريبي (تأكد من أنك لم تحظر البوت).');
     return { ok: false, message: 'تعذر إرسال الطلب التجريبي (تأكد من أنك لم تحظر البوت).' };
   }
+  lastSendErrorByRid.delete(rid);
   if (status.telegramPhone) recordMessageSent(status.telegramPhone);
   return { ok: true, message: 'تم إرسال طلب تجريبي إلى حسابك في تيليجرام ✓' };
 }
@@ -2137,7 +2142,7 @@ export async function startTelegramBotPolling(): Promise<void> {
 
     const initialInfo = getEffectiveBotTokenInfo();
     if (!initialInfo.token) {
-      lastPollError = 'توكن البوت غير مضاف';
+      lastPollError = '';
       console.log('[Telegram Bot] Bot token not configured; polling disabled.');
       return;
     }
@@ -2176,6 +2181,8 @@ export async function startTelegramBotPolling(): Promise<void> {
     }
 
     let lastLoggedErrAt = 0;
+    let consecutivePollNetworkErrors = 0;
+    let isFirstPollCycle = true;
     const encodedAllowedUpdates = encodeURIComponent(JSON.stringify(['message']));
 
     async function pollLoop() {
@@ -2184,17 +2191,20 @@ export async function startTelegramBotPolling(): Promise<void> {
         const currentToken = currentInfo.token;
         if (!currentToken) {
           isPollingActive = false;
+          lastPollError = '';
           break;
         }
         const currentHash = getTokenHash(currentToken);
+        const pollTimeoutSec = isFirstPollCycle ? 0 : 10;
+        isFirstPollCycle = false;
 
         try {
           const url = `https://api.telegram.org/bot${currentToken}/getUpdates?offset=${
             lastUpdateId + 1
-          }&timeout=10&allowed_updates=${encodedAllowedUpdates}`;
+          }&timeout=${pollTimeoutSec}&allowed_updates=${encodedAllowedUpdates}`;
 
           const res = await fetch(url, {
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(pollTimeoutSec === 0 ? 10000 : 15000),
           });
 
           const rawText = await res.text().catch(() => '');
@@ -2231,11 +2241,10 @@ export async function startTelegramBotPolling(): Promise<void> {
           if (res.status === 409) {
             const desc = String(data.description || '');
             if (/webhook/i.test(desc)) {
-              lastPollError = 'تم اكتشاف Webhook نشط يمنع استقبال الرسائل — جاري إزالته تلقائياً...';
               await fetch(`https://api.telegram.org/bot${currentToken}/deleteWebhook?drop_pending_updates=false`, {
                 signal: AbortSignal.timeout(8000),
               }).catch(() => {});
-              await new Promise((r) => setTimeout(r, 2000));
+              await new Promise((r) => setTimeout(r, 1500));
             } else {
               lastPollError = 'تعارض Polling (409): توجد نسخة أخرى من الخادم أو البوت تعمل بنفس التوكن وتلتقط الرسائل!';
               const nowTs = Date.now();
@@ -2251,11 +2260,15 @@ export async function startTelegramBotPolling(): Promise<void> {
           consecutiveAuthErrors = 0;
 
           if (!res.ok || !data.ok) {
-            lastPollError = data.description || `HTTP ${res.status}`;
+            consecutivePollNetworkErrors++;
+            if (consecutivePollNetworkErrors >= 3) {
+              lastPollError = data.description || `HTTP ${res.status}`;
+            }
             await new Promise((r) => setTimeout(r, 4000));
             continue;
           }
 
+          consecutivePollNetworkErrors = 0;
           lastPollError = '';
           lastTokenError = '';
           lastTokenErrorAt = 0;
@@ -2285,13 +2298,16 @@ export async function startTelegramBotPolling(): Promise<void> {
           }
         } catch (err: any) {
           const msg = err?.message || String(err);
-          lastPollError = msg;
+          consecutivePollNetworkErrors++;
+          if (consecutivePollNetworkErrors >= 3) {
+            lastPollError = msg;
+          }
           const nowTs = Date.now();
           if (nowTs - lastLoggedErrAt > 30000) {
             lastLoggedErrAt = nowTs;
             console.warn('[Telegram Bot] Polling error:', msg);
           }
-          await new Promise((r) => setTimeout(r, 4000));
+          await new Promise((r) => setTimeout(r, 2500));
         }
       }
     }
@@ -2330,8 +2346,8 @@ export function getTelegramBotStatus(): {
     enabled: cachedTelegramConfig.enabled !== false,
     botUsername: getEffectiveBotUsername(),
     boundUsersCount: uniquePhones.size,
-    pollingActive: Boolean(isPollingActive && !lastPollError),
-    pollingHealthy: Boolean(isPollingActive && !lastPollError && lastPollSuccessAt > 0),
+    pollingActive: Boolean(isPollingActive),
+    pollingHealthy: Boolean(isPollingActive && !lastPollError && (lastPollSuccessAt > 0 || !consecutiveAuthErrors)),
     botTokenValid,
     botTokenError: lastTokenError || null,
     tokenSource: tokenInfo.source,
@@ -2511,6 +2527,7 @@ export async function verifyTelegramBotLive(rid: string): Promise<{
     await new Promise((r) => setTimeout(r, 900));
   }
 
+  lastSendErrorByRid.delete(String(rid || '').trim());
   const freshStatus = await getTelegramOrderLinkStatus(rid);
   if (freshStatus.lastPollError) {
     return {

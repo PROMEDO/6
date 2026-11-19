@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertCircle,
@@ -25,9 +25,9 @@ import {
   Store,
   Sun,
   Trash2,
-  Upload,
   UtensilsCrossed,
 } from 'lucide-react';
+import { MediaLibraryModal } from '../../components/MediaLibraryModal';
 import { sanitizeSlug } from '../../utils/businessDefaults';
 import {
   WEEK_DAYS_ORDER,
@@ -38,6 +38,7 @@ import {
 
 export const SettingsPage: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<'logo' | 'cover' | null>(null);
   const {
     showToast,
     resolvedPlan,
@@ -73,7 +74,9 @@ export const SettingsPage: React.FC = () => {
     setShowBannerUrlField,
     handleCurrencyChange,
     flushAllPendingSaves,
-    handleDeviceImageUpload,
+    mediaLibraryItems,
+    uploadImagesToLibrary,
+    removeMediaLibraryItem,
     restProjectType,
     setRestProjectType,
     restName,
@@ -924,7 +927,9 @@ export const SettingsPage: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: 0 }}>
-                    <label
+                    <button
+                      type="button"
+                      onClick={() => setMediaPickerTarget('logo')}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -932,6 +937,7 @@ export const SettingsPage: React.FC = () => {
                         gap: '6px',
                         padding: '9px 14px',
                         borderRadius: '10px',
+                        border: 'none',
                         background: 'var(--brand)',
                         color: 'var(--on-brand)',
                         fontSize: '12.5px',
@@ -940,22 +946,9 @@ export const SettingsPage: React.FC = () => {
                         width: 'fit-content',
                       }}
                     >
-                      <Upload size={14} />
-                      <span>رفع من الجهاز</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={(e) =>
-                          void handleDeviceImageUpload(
-                            e,
-                            setLogoUrlInput,
-                            'تم اختيار الشعار وتثبيته في المنيو تلقائياً',
-                            'logo'
-                          )
-                        }
-                      />
-                    </label>
+                      <ImageIcon size={14} />
+                      <span>اختيار من مكتبة الصور</span>
+                    </button>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
@@ -1042,13 +1035,16 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => setMediaPickerTarget('cover')}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
                       padding: '8px 14px',
                       borderRadius: '10px',
+                      border: 'none',
                       background: 'var(--brand)',
                       color: 'var(--on-brand)',
                       fontSize: '12.5px',
@@ -1056,22 +1052,9 @@ export const SettingsPage: React.FC = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    <Upload size={14} />
-                    <span>رفع من الجهاز</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) =>
-                        void handleDeviceImageUpload(
-                          e,
-                          setCoverUrlInput,
-                          'تم اختيار صورة الغلاف وتثبيتها في المنيو تلقائياً',
-                          'banner'
-                        )
-                      }
-                    />
-                  </label>
+                    <ImageIcon size={14} />
+                    <span>اختيار من مكتبة الصور</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowBannerUrlField((v) => !v)}
@@ -1738,6 +1721,29 @@ export const SettingsPage: React.FC = () => {
           </div>
         </motion.section>
       </form>
+
+      <MediaLibraryModal
+        isOpen={mediaPickerTarget !== null}
+        items={mediaLibraryItems}
+        currentUrl={mediaPickerTarget === 'logo' ? logoUrlInput : coverUrlInput}
+        onSelect={(url) => {
+          if (mediaPickerTarget === 'logo') {
+            setLogoUrlInput(url);
+          } else if (mediaPickerTarget === 'cover') {
+            setCoverUrlInput(url);
+          }
+        }}
+        onUploadFiles={uploadImagesToLibrary}
+        onDeleteItem={(mediaId) => {
+          const target = mediaLibraryItems.find((m) => m.id === mediaId);
+          if (target) {
+            if (target.url === logoUrlInput) setLogoUrlInput('');
+            if (target.url === coverUrlInput) setCoverUrlInput('');
+          }
+          removeMediaLibraryItem(mediaId);
+        }}
+        onClose={() => setMediaPickerTarget(null)}
+      />
     </div>
   );
 };

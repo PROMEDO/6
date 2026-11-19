@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Image as ImageIcon, Plus, Upload, X } from 'lucide-react';
 import { MediaLibraryItem } from '../types';
 
@@ -58,33 +59,38 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
     onClose();
   };
 
-  return (
-    <>
-      <div
-        className="drawer-backdrop"
-        style={{ zIndex: 100000 }}
-        onClick={onClose}
-      />
+  const modalContent = (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        background: 'rgba(0, 0, 0, 0.62)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        zIndex: 100150,
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="مكتبة الصور"
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'min(820px, 94vw)',
-          maxHeight: '86vh',
+          width: 'min(820px, 100%)',
+          maxHeight: 'calc(100dvh - 32px)',
           display: 'flex',
           flexDirection: 'column',
-          background: 'color-mix(in srgb, var(--surface) 40%, transparent)',
-          backdropFilter: 'blur(14px) saturate(1.25)',
-          WebkitBackdropFilter: 'blur(14px) saturate(1.25)',
+          background: 'color-mix(in srgb, var(--surface) 88%, transparent)',
+          backdropFilter: 'blur(16px) saturate(1.25)',
+          WebkitBackdropFilter: 'blur(16px) saturate(1.25)',
           border: '1px solid color-mix(in srgb, var(--line) 80%, transparent)',
           borderRadius: '20px',
           color: 'var(--ink)',
-          zIndex: 100001,
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
         }}
@@ -411,6 +417,8 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
