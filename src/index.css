@@ -11938,5 +11938,56 @@ html[data-theme] [data-home-theme="dark"] .mp-auth-glass-card select option {
   }
 }
 
+.pm-toters-loyalty-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pm-brand) 10%, var(--pm-soft));
+  border: 1px solid color-mix(in srgb, var(--pm-brand) 26%, var(--pm-line));
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--pm-ink);
+}
+
+.pm-toters-loyalty-bar-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pm-toters-loyalty-bar-info > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-toters-loyalty-bar-badge {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--pm-brand);
+  background: var(--pm-card);
+  border: 1px solid color-mix(in srgb, var(--pm-brand) 28%, var(--pm-line));
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.pm-toters-cart-loyalty-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--pm-brand) 30%, var(--pm-line));
+  background: color-mix(in srgb, var(--pm-brand) 10%, var(--pm-soft));
+  margin-bottom: 12px;
+}
+
+
 
 

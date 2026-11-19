@@ -301,7 +301,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   branchShortLabel,
   onOpenBranchPicker,
 }) => {
-  const [, setSyncTick] = useState(0);
+  const [syncTick, setSyncTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -444,12 +444,12 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   const addons = useMemo<RestaurantAddons>(() => {
     const filtered: Record<string, any> = {};
     Object.keys(rawAddons).forEach((k) => {
-      if (isAddonAllowedForPlan(k, resolvedPlan)) {
+      if (isAddonAllowedForPlan(k, resolvedPlan) || (isToters && k === 'loyaltyPoints')) {
         filtered[k] = (rawAddons as Record<string, any>)[k];
       }
     });
     return filtered as RestaurantAddons;
-  }, [rawAddons, resolvedPlan]);
+  }, [rawAddons, resolvedPlan, isToters]);
 
   // Available order types (gated by plan permissions + restaurant toggles)
   const enabledTypes = useMemo<OrderType[]>(() => {
@@ -1064,6 +1064,22 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
 
   // Active automatic menu discount (Countdown Timer discount OR Happy Hour discount)
   const activeMenuDiscount = useMemo(() => getActiveMenuDiscount(addons, nowMs), [addons, nowMs]);
+
+  // Real order frequency map per item name (for "الأكثر طلباً" in Toters & badges)
+  const itemOrderCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const restOrders = getCollection<Order>('orders').filter(
+      (o) => o.rid === restaurantId && o.st !== 'cancelled' && o.status !== 'cancelled'
+    );
+    restOrders.forEach((o) => {
+      (o.items || []).forEach((line) => {
+        const key = String(line.n || '').trim().toLowerCase();
+        if (!key) return;
+        counts.set(key, (counts.get(key) || 0) + Math.max(1, Number(line.q) || 1));
+      });
+    });
+    return counts;
+  }, [restaurantId, syncTick, lastOrderSummary?.id]);
 
   // Apply Chef Picks / Offers / Favorites filter cleanly
   const displayedItems = useMemo(() => {
@@ -2230,83 +2246,6 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   </button>
                 </div>
               </div>
-
-              {/* 3-Column Toters Metrics Strip (Delivery Time | Delivery Cost | Ratings) */}
-              {(() => {
-                const etaValue =
-                  addons.deliveryEtaTracker?.etaText ||
-                  addons.prepBadge?.etaText ||
-                  activeCity?.eta ||
-                  '30 - 45 دقائق';
-                const reviewCount = restaurantReviews.length;
-                const avgScore =
-                  reviewCount > 0
-                    ? (
-                        restaurantReviews.reduce(
-                          (acc: number, r: RestaurantReview) => acc + (Number(r.rate || r.stars || 5) || 5),
-                          0
-                        ) / reviewCount
-                      ).toFixed(1)
-                    : '4.8';
-                return (
-                  <div className="pm-toters-metrics">
-                    <div className="pm-toters-metric-cell">
-                      <span className="pm-toters-metric-label">
-                        {orderType === 'delivery' ? 'وقت التوصيل' : 'وقت التحضير'}
-                      </span>
-                      <strong className="pm-toters-metric-val">{etaValue}</strong>
-                    </div>
-
-                    <div className="pm-toters-metric-cell">
-                      <span className="pm-toters-metric-label">
-                        {orderType === 'delivery' ? 'كلفة التوصيل' : 'نوع الطلب'}
-                      </span>
-                      <strong className="pm-toters-metric-val">
-                        {orderType !== 'delivery' ? (
-                          ORDER_TYPE_META[orderType].label
-                        ) : qualifiesFreeDelivery || rawDeliveryFee === 0 ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                            {rawDeliveryFee > 0 && (
-                              <span
-                                className="tabular-nums"
-                                style={{
-                                  fontSize: '11.5px',
-                                  color: 'var(--pm-muted)',
-                                  textDecoration: 'line-through',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {fmtMoney(rawDeliveryFee)}
-                              </span>
-                            )}
-                            <span style={{ color: '#ef4444', fontWeight: 900 }}>مجاني</span>
-                          </span>
-                        ) : (
-                          <span className="tabular-nums">{fmtMoney(effectiveDeliveryFee)}</span>
-                        )}
-                      </strong>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="pm-toters-metric-cell is-btn"
-                      onClick={() => {
-                        if (reviewsAllowSubmit) setRateModalOpen(true);
-                        else setWorkModalOpen(true);
-                      }}
-                    >
-                      <span className="pm-toters-metric-label">التقييم والمراجعات</span>
-                      <strong className="pm-toters-metric-val">
-                        <span className="tabular-nums">{avgScore}</span>
-                        <Star size={14} fill={brandColor} color={brandColor} />
-                        <span style={{ fontSize: '11.5px', color: 'var(--pm-muted)', fontWeight: 600 }}>
-                          {reviewCount > 0 ? `(${reviewCount})` : '(تقييم)'}
-                        </span>
-                      </strong>
-                    </button>
-                  </div>
-                );
-              })()}
             </section>
 
             {/* Toters Horizontal Coupon & Promo Ticket Cards */}
@@ -2366,9 +2305,12 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   id: 'loyalty-ticket',
                   badgeIcon: <Gift size={12} />,
                   badgeBg: brandColor,
-                  eyebrow: 'نقاط الولاء',
+                  eyebrow: 'برنامج نقاط الولاء',
                   title: `اكسب ${addons.loyaltyPoints.pointsPerThousand || 1} نقطة / 1,000`,
-                  footer: loyaltyBalance > 0 ? `رصيدك: ${loyaltyBalance}` : 'يُطبق تلقائياً',
+                  footer:
+                    loyaltyBalance > 0
+                      ? `رصيدك الحالي: ${loyaltyBalance} نقطة`
+                      : addons.loyaltyPoints.rewardNote || 'تُضاف نقاطك تلقائياً بعد كل طلب',
                 });
               }
 
@@ -3254,10 +3196,10 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           </div>
         )}
 
-        {/* Toters Discovery Shelves: "اطلب مجدداً" & "شائع" */}
+        {/* Toters Discovery Shelves: "اطلب مجدداً" (only if ordered before) & "الأكثر طلباً" */}
         {isToters && allItems.length > 0 && menuQuickFilter === 'all' && (() => {
           const reorderItems: MenuItem[] = [];
-          if (lastSavedOrderCart.length > 0) {
+          if (hasOrderedBefore && lastSavedOrderCart.length > 0) {
             const seen = new Set<string>();
             lastSavedOrderCart.forEach((l) => {
               if (seen.has(l.itemId)) return;
@@ -3267,19 +3209,27 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 reorderItems.push(found);
               }
             });
-          } else if (favoriteIds.length > 0) {
-            favoriteIds.forEach((fid) => {
-              const found = allItems.find((it) => it.id === fid);
-              if (found) reorderItems.push(found);
-            });
           }
 
-          const badgedPopular = allItems.filter(
-            (it) =>
-              (it.badges && it.badges.length > 0) ||
-              /شائع|طلباً|أفضل|best|popular/i.test(`${it.n} ${it.d || ''}`)
-          );
-          const popularShelf = (badgedPopular.length >= 2 ? badgedPopular : allItems).slice(0, 8);
+          const scoredMostOrdered = allItems
+            .map((it) => {
+              const ordQty = itemOrderCounts.get(it.n.trim().toLowerCase()) || 0;
+              const hasBestBadge = Boolean(
+                it.badges?.some(
+                  (b) =>
+                    /طلباً|الأكثر|شائع|أفضل|best|popular/i.test(String(b.text || '')) ||
+                    b.type === 'red'
+                )
+              );
+              const hasAnyBadge = Boolean(it.badges && it.badges.length > 0);
+              const score = ordQty * 10 + (hasBestBadge ? 5 : hasAnyBadge ? 2 : 0);
+              return { it, score };
+            })
+            .filter((entry) => entry.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map((entry) => entry.it);
+
+          const mostOrderedShelf = (scoredMostOrdered.length >= 2 ? scoredMostOrdered : allItems).slice(0, 8);
 
           const renderShelf = (heading: string, items: MenuItem[]) => {
             if (items.length === 0) return null;
@@ -3335,7 +3285,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           return (
             <>
               {reorderItems.length > 0 && renderShelf('اطلب مجدداً', reorderItems.slice(0, 8))}
-              {popularShelf.length > 0 && renderShelf('شائع', popularShelf)}
+              {mostOrderedShelf.length > 0 && renderShelf('الأكثر طلباً', mostOrderedShelf)}
             </>
           );
         })()}
@@ -3569,7 +3519,8 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                         const isCompared = compareIds.includes(it.id);
 
                         if (isToters) {
-                          const isPopular = Boolean(it.badges && it.badges.length > 0);
+                          const ordCount = itemOrderCounts.get(it.n.trim().toLowerCase()) || 0;
+                          const isPopular = ordCount > 0 || Boolean(it.badges && it.badges.length > 0);
                           return (
                             <article
                               key={it.id}
@@ -3587,7 +3538,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                                   )}
                                   {isPopular && (
                                     <span className="pm-toters-popular-tag">
-                                      <Flame size={12} fill="#f97316" color="#f97316" /> شائع
+                                      <Flame size={12} fill="#f97316" color="#f97316" /> الأكثر طلباً
                                     </span>
                                   )}
                                   {addons.flashQuantityScarcity?.enabled && !unavailable && (
@@ -4113,7 +4064,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
             </div>
           )}
 
-          {rest.taxNote && <p style={{ margin: '0 0 10px' }}>{rest.taxNote}</p>}
+          {!isToters && rest.taxNote && <p style={{ margin: '0 0 10px' }}>{rest.taxNote}</p>}
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span>مدعوم بواسطة</span>
             <button
@@ -4248,6 +4199,22 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
       {!cartOpen && (
         <div className="pm-floating-dock">
           <div className="pm-dock-inner">
+            {isToters && addons.loyaltyPoints?.enabled && (
+              <div className="pm-toters-loyalty-bar">
+                <span className="pm-toters-loyalty-bar-info">
+                  <Gift size={16} style={{ color: accentText, flexShrink: 0 }} />
+                  <span>
+                    {totalCount > 0
+                      ? `ستكسب +${earnedLoyaltyPoints} نقطة من طلبك`
+                      : addons.loyaltyPoints.rewardNote || `اكسب ${addons.loyaltyPoints.pointsPerThousand || 1} نقطة لكل 1,000 ${currency}`}
+                  </span>
+                </span>
+                <span className="pm-toters-loyalty-bar-badge tabular-nums">
+                  {loyaltyBalance > 0 ? `رصيدك: ${loyaltyBalance} نقطة` : `${addons.loyaltyPoints.pointsPerThousand || 1} نقطة / 1,000`}
+                </span>
+              </div>
+            )}
+
             {totalCount > 0 && freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery' && (
               <div className={`pm-fd-card ${qualifiesFreeDelivery ? 'qualifies' : ''}`}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4412,10 +4379,10 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
             </div>
 
             <div className={isToters ? 'pm-toters-sheet-body' : undefined} style={isToters ? undefined : { padding: '16px 18px 22px' }}>
-              {isToters && activeProduct.badges && activeProduct.badges.length > 0 && (
+              {isToters && ((itemOrderCounts.get(activeProduct.n.trim().toLowerCase()) || 0) > 0 || (activeProduct.badges && activeProduct.badges.length > 0)) && (
                 <div style={{ marginBottom: '6px' }}>
                   <span className="pm-toters-popular-pill">
-                    <Flame size={12} fill="#f97316" color="#f97316" /> شائع
+                    <Flame size={12} fill="#f97316" color="#f97316" /> الأكثر طلباً
                   </span>
                 </div>
               )}
@@ -4709,7 +4676,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 </div>
               )}
 
-              {rest.taxNote && (
+              {!isToters && rest.taxNote && (
                 <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--pm-muted)', textAlign: 'center' }}>
                   {rest.taxNote}
                 </p>
@@ -5246,6 +5213,35 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                           {addons.deliveryEtaTracker?.etaText || addons.prepBadge?.etaText || '30 - 45 دقائق'}
                         </span>
                       </div>
+                    </div>
+                  )}
+
+                  {isToters && addons.loyaltyPoints?.enabled && (
+                    <div className="pm-toters-cart-loyalty-card">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <Gift size={17} style={{ color: accentText, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <b style={{ display: 'block', fontSize: '13px', fontWeight: 900, color: 'var(--pm-ink)' }}>
+                            ستكسب +{earnedLoyaltyPoints} نقطة من هذا الطلب
+                          </b>
+                          {addons.loyaltyPoints.rewardNote && (
+                            <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--pm-muted)' }}>
+                              {addons.loyaltyPoints.rewardNote}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className="tabular-nums"
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 900,
+                          color: accentText,
+                          flexShrink: 0,
+                        }}
+                      >
+                        رصيدك: {loyaltyBalance}
+                      </span>
                     </div>
                   )}
 
