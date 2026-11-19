@@ -14,6 +14,7 @@ export type MenuLayout =
 
 export type MenuThemeShape =
   | 'modern'
+  | 'toters'
   | 'glass'
   | 'cartoon'
   | 'dreamy'

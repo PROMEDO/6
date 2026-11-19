@@ -31,7 +31,7 @@ export interface MenuThemeDefinition extends MenuThemePalette {
 }
 
 export interface MenuShapeDefinition {
-  id: 'modern' | 'glass' | 'cartoon' | 'dreamy' | 'pill' | 'sharp' | 'bordered' | 'soft' | 'ramadan' | 'eid' | 'newyear';
+  id: 'modern' | 'toters' | 'glass' | 'cartoon' | 'dreamy' | 'pill' | 'sharp' | 'bordered' | 'soft' | 'ramadan' | 'eid' | 'newyear';
   name: string;
   subtitle: string;
   badge?: string;
@@ -42,6 +42,12 @@ export const MENU_SHAPES: MenuShapeDefinition[] = [
     id: 'modern',
     name: 'عصري ناعم',
     subtitle: 'زوايا متوازنة وظلال مريحة لكل الصفحة والبطاقات',
+  },
+  {
+    id: 'toters',
+    name: 'مظهر توترز',
+    subtitle: 'تصميم توترز الكامل: بطاقة المتجر العائمة، التصنيفات المسطحة، الرفوف الأفقية، والسلة المميزة',
+    badge: 'توترز ✨',
   },
   {
     id: 'glass',
@@ -180,6 +186,42 @@ export const MENU_THEMES: MenuThemeDefinition[] = [
       text: '#f8fafc',
       muted: '#94a3b8',
       line: 'rgba(148, 163, 184, 0.18)',
+    },
+  },
+  {
+    id: 'toters',
+    name: 'توترز',
+    subtitle: 'ألوان توترز الرسمية بالفيروزي والأبيض النقي مع القوائم الكاملة',
+    category: 'classic',
+    mode: 'light',
+    brand: '#00B286',
+    accent: '#00C897',
+    bg: '#F7F8FA',
+    surface: '#FFFFFF',
+    surfaceSoft: '#EEF2F6',
+    text: '#111827',
+    muted: '#6B7280',
+    line: 'rgba(17, 24, 39, 0.08)',
+    minTierIndex: 0,
+    lightPalette: {
+      brand: '#00B286',
+      accent: '#00C897',
+      bg: '#F7F8FA',
+      surface: '#FFFFFF',
+      surfaceSoft: '#EEF2F6',
+      text: '#111827',
+      muted: '#6B7280',
+      line: 'rgba(17, 24, 39, 0.08)',
+    },
+    darkPalette: {
+      brand: '#00C897',
+      accent: '#34D399',
+      bg: '#0B1110',
+      surface: '#131D1B',
+      surfaceSoft: '#1B2926',
+      text: '#F8FAFC',
+      muted: '#94A3B8',
+      line: 'rgba(255, 255, 255, 0.1)',
     },
   },
   {
@@ -1296,12 +1338,14 @@ export function getAllowedThemesForPlan(resolved: ResolvedPlanInfo): MenuThemeDe
     return MENU_THEMES;
   }
   const limit = Math.max(2, resolved.maxThemes || 2);
-  const regular = MENU_THEMES.filter((t) => !t.seasonal).slice(0, limit);
+  const regular = MENU_THEMES.filter((t) => !t.seasonal && t.id !== 'toters').slice(0, limit);
+  const totersTheme = MENU_THEMES.filter((t) => t.id === 'toters');
   const seasonal = MENU_THEMES.filter((t) => t.seasonal);
-  return [...regular, ...seasonal];
+  return [...regular, ...totersTheme, ...seasonal];
 }
 
-export function getSeasonalPairedShape(presetId?: string): 'ramadan' | 'eid' | 'newyear' | null {
+export function getSeasonalPairedShape(presetId?: string): 'toters' | 'ramadan' | 'eid' | 'newyear' | null {
+  if (presetId === 'toters') return 'toters';
   if (presetId === 'ramadan-royal') return 'ramadan';
   if (presetId === 'eid-joy') return 'eid';
   if (presetId === 'newyear-gala') return 'newyear';
@@ -1309,6 +1353,7 @@ export function getSeasonalPairedShape(presetId?: string): 'ramadan' | 'eid' | '
 }
 
 export function getSeasonalPairedTheme(shapeId?: string): string | null {
+  if (shapeId === 'toters') return 'toters';
   if (shapeId === 'ramadan') return 'ramadan-royal';
   if (shapeId === 'eid') return 'eid-joy';
   if (shapeId === 'newyear') return 'newyear-gala';

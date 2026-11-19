@@ -27,6 +27,7 @@ import {
   MessageCircle,
   Mic,
   Minus,
+  Percent,
   Plus,
   RotateCcw,
   Scale,
@@ -38,6 +39,7 @@ import {
   Sparkles,
   Star,
   Store,
+  Trash2,
   Truck,
   Unlock,
   Users,
@@ -367,6 +369,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   };
   const activeTheme = getMenuThemeById(rest?.themePreset, rest?.themeMode);
   const activeShape: MenuThemeShape =
+    rest?.themeShape === 'toters' ||
     rest?.themeShape === 'glass' ||
     rest?.themeShape === 'cartoon' ||
     rest?.themeShape === 'dreamy' ||
@@ -379,6 +382,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
     rest?.themeShape === 'newyear'
       ? rest.themeShape
       : 'modern';
+  const isToters = activeShape === 'toters';
   const isCustomPreset = rest?.themePreset === 'custom' && resolvedPlan.perms.customColors;
   const hasKnownPreset = Boolean(
     rest?.themePreset &&
@@ -784,6 +788,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<MenuItemExtra[]>([]);
   const [modalQty, setModalQty] = useState(1);
+  const [modalItemNote, setModalItemNote] = useState('');
   const [allergensOpen, setAllergensOpen] = useState(false);
 
   // Cart & Checkout State (Persisted in localStorage so cart items are never lost)
@@ -1334,6 +1339,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
     setSelectedChoices([]);
     setSelectedExtras([]);
     setModalQty(1);
+    setModalItemNote('');
     setAllergensOpen(false);
   };
 
@@ -1472,7 +1478,10 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
     const sizeName = selectedSize ? getSizeLabel(selectedSize) : '';
     const chSorted = [...selectedChoices].sort();
     const exSorted = [...selectedExtras].map((e) => getExtraLabel(e)).sort();
-    const key = `${activeProduct.id}|${sizeName}|${chSorted.join(',')}|${exSorted.join(',')}`;
+    const cleanNote = modalItemNote.trim();
+    const key = cleanNote
+      ? `${activeProduct.id}|${sizeName}|${chSorted.join(',')}|${exSorted.join(',')}|${cleanNote}`
+      : `${activeProduct.id}|${sizeName}|${chSorted.join(',')}|${exSorted.join(',')}`;
     const calNum = parseCaloriesNum(selectedSize?.cal || activeProduct.calories);
 
     setCart((prev) => {
@@ -1493,6 +1502,7 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           choices: selectedChoices,
           extras: selectedExtras.map((e) => getExtraLabel(e)),
           img: activeProduct.img,
+          notes: cleanNote || undefined,
           caloriesNum: calNum,
         },
       ];
@@ -2043,263 +2053,614 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
         </div>
       )}
 
-      {/* Top Sticky Action Bar */}
-      <header className="pm-topbar">
-        <div className="pm-topbar-inner">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              className="pm-icon-btn"
-              onClick={() => setMenuDrawerOpen(true)}
-              aria-label="قائمة المطعم"
-            >
-              <Menu size={20} />
-            </button>
-
-            <button
-              type="button"
-              className="pm-order-type-pill"
-              onClick={() => setOrderTypeModalOpen(true)}
-            >
-              <span style={{ color: accentText }}>{ORDER_TYPE_META[orderType].icon}</span>
-              <span>{ORDER_TYPE_META[orderType].label}</span>
-              <ChevronDown size={14} style={{ color: 'var(--pm-muted)' }} />
-            </button>
-
-            {hasMultipleBranches && (
-              <button
-                type="button"
-                className="pm-order-type-pill pm-branch-pill"
-                onClick={onOpenBranchPicker}
-                title="تبديل الفرع"
-                aria-label="تبديل الفرع"
-              >
-                <GitBranch size={14} style={{ color: accentText, flexShrink: 0 }} />
-                <span className="pm-branch-pill-label">{branchShortLabel}</span>
-                <ChevronDown size={13} style={{ color: 'var(--pm-muted)', flexShrink: 0 }} />
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {addons.multiCurrencySwitch?.enabled && (
-              <button
-                type="button"
-                className="pm-order-type-pill"
-                onClick={() => setCurrencyMode((m) => (m === 'base' ? 'alt' : 'base'))}
-                title="تبديل العملة"
-                style={{
-                  height: '34px',
-                  padding: '0 10px',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  gap: '5px',
-                  borderColor: currencyMode === 'alt' ? 'var(--pm-brand)' : undefined,
-                  color: currencyMode === 'alt' ? accentText : undefined,
-                }}
-              >
-                <ArrowLeftRight size={13} />
-                <span dir="ltr">{currencyMode === 'alt' ? (addons.multiCurrencySwitch.altSymbol || '$') : currency}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="pm-icon-btn"
-              onClick={handleShareMenu}
-              aria-label="مشاركة المنيو"
-              title="مشاركة المنيو"
-            >
-              <Share2 size={18} />
-            </button>
-            <button
-              type="button"
-              className="pm-icon-btn"
-              onClick={() => setSearchOpen(true)}
-              aria-label="بحث في المنيو"
-            >
-              <Search size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="pm-container">
-        <SeasonalHeroRibbon shape={activeShape} />
-        {/* Hero Cover Carousel (only shown if merchant uploaded banners) */}
-        {coverImages.length > 0 && (
-          <div className="pm-hero-carousel">
-            <img
-              src={coverImages[bannerIdx % coverImages.length]}
-              alt={rest.n}
-              referrerPolicy="no-referrer"
-            />
-            {coverImages.length > 1 && (
-              <div className="pm-hero-dots">
-                {coverImages.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    aria-label={`بنر ${i + 1}`}
-                    className={`pm-hero-dot ${i === bannerIdx ? 'active' : ''}`}
-                    onClick={() => setBannerIdx(i)}
+      {isToters ? (
+        <>
+          {/* TOTERS FULL-BLEED COVER HERO + FLOATING STORE CARD */}
+          <div className="pm-toters-hero-wrap">
+            <div className={`pm-toters-hero-banner ${coverImages.length === 0 ? 'no-img' : ''}`}>
+              {coverImages.length > 0 ? (
+                <>
+                  <img
+                    src={coverImages[bannerIdx % coverImages.length]}
+                    alt={rest.n}
+                    referrerPolicy="no-referrer"
                   />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Restaurant Identity Card */}
-        <section className={`pm-profile-card ${coverImages.length > 0 ? 'has-banner' : ''}`}>
-          <div className="pm-logo-box">
-            {rest.logo ? (
-              <img src={rest.logo} alt={rest.n} referrerPolicy="no-referrer" />
-            ) : (
-              <span>{(rest.n || 'M').slice(0, 2)}</span>
-            )}
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, fontSize: '17.5px', fontWeight: 800, color: 'var(--pm-ink)' }}>
-                {rest.n}
-              </h1>
-              <button
-                type="button"
-                className="pm-shape-pill"
-                onClick={() => setWorkModalOpen(true)}
-                style={{
-                  border: openNow ? '1px solid rgba(52, 211, 153, 0.36)' : '1px solid rgba(248, 113, 113, 0.36)',
-                  padding: '3px 10px',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: openNow ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)',
-                  color: openNow ? (isLightMenu ? '#047857' : '#34D399') : (isLightMenu ? '#B91C1C' : '#FCA5A5'),
-                }}
-              >
-                {openNow ? 'مفتوح الآن' : 'مغلق'}
-              </button>
-            </div>
-
-            {rest.tagline && (
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--pm-muted)', fontWeight: 500 }}>
-                {rest.tagline}
-              </p>
-            )}
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                flexWrap: 'wrap',
-                marginTop: '8px',
-                fontSize: '12px',
-                color: 'var(--pm-muted)',
-              }}
-            >
-              {addons.prepBadge?.enabled && (
-                <span
-                  className="pm-shape-pill"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: 'var(--pm-soft)',
-                    border: '1px solid var(--pm-line)',
-                    color: 'var(--pm-ink)',
-                    padding: '2px 9px',
-                    fontWeight: 700,
-                  }}
-                >
-                  ⏱️ {addons.prepBadge.text || 'وقت التحضير'}: {addons.prepBadge.etaText || '20 - 30 دقيقة'}
-                </span>
+                  <div className="pm-toters-hero-scrim" />
+                </>
+              ) : (
+                <div className="pm-toters-hero-fallback" />
               )}
-              {addons.deliveryEtaTracker?.enabled && (
-                <span
-                  className="pm-shape-pill"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: 'rgba(59, 130, 246, 0.14)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    color: isLightMenu ? '#1d4ed8' : '#93C5FD',
-                    padding: '2px 9px',
-                    fontWeight: 700,
-                  }}
-                >
-                  <Truck size={12} style={{ display: 'inline', verticalAlign: '-2px', marginInlineEnd: '4px' }} />
-                  التوصيل: {addons.deliveryEtaTracker.etaText || '30 - 45 دقيقة'}
-                </span>
-              )}
-              {addons.liveKitchenLoad?.enabled && (() => {
-                const lvl = addons.liveKitchenLoad.level || 'moderate';
-                const cfg =
-                  lvl === 'calm'
-                    ? { label: 'ضغط المطبخ: هادئ ⚡', bg: 'rgba(16, 185, 129, 0.14)', border: 'rgba(16, 185, 129, 0.32)', color: isLightMenu ? '#047857' : '#34D399' }
-                    : lvl === 'busy'
-                    ? { label: 'ضغط المطبخ: مزدحم 🔥', bg: 'rgba(239, 68, 68, 0.14)', border: 'rgba(239, 68, 68, 0.32)', color: isLightMenu ? '#b91c1c' : '#FCA5A5' }
-                    : { label: 'ضغط المطبخ: متوسط ⏱️', bg: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.32)', color: isLightMenu ? '#b45309' : '#FCD34D' };
-                return (
-                  <span
-                    className="pm-shape-pill"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      background: cfg.bg,
-                      border: `1px solid ${cfg.border}`,
-                      color: cfg.color,
-                      padding: '2px 9px',
-                      fontWeight: 700,
-                    }}
+
+              {/* Overlaid Circular Action Bar (Matching Toters RTL Layout) */}
+              <div className="pm-toters-hero-controls">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="pm-toters-circle-btn"
+                    onClick={() => setMenuDrawerOpen(true)}
+                    aria-label="قائمة المطعم"
                   >
-                    <span>{cfg.label}</span>
-                    {addons.liveKitchenLoad.customNote && (
-                      <span style={{ opacity: 0.85 }}>({addons.liveKitchenLoad.customNote})</span>
+                    <Menu size={19} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="pm-toters-mode-pill"
+                    onClick={() => setOrderTypeModalOpen(true)}
+                  >
+                    <span style={{ color: brandColor, display: 'inline-flex' }}>{ORDER_TYPE_META[orderType].icon}</span>
+                    <span>{ORDER_TYPE_META[orderType].label}</span>
+                    <ChevronDown size={13} />
+                  </button>
+
+                  {hasMultipleBranches && (
+                    <button
+                      type="button"
+                      className="pm-toters-mode-pill pm-branch-pill"
+                      onClick={onOpenBranchPicker}
+                      title="تبديل الفرع"
+                      aria-label="تبديل الفرع"
+                    >
+                      <GitBranch size={13} style={{ color: brandColor, flexShrink: 0 }} />
+                      <span className="pm-branch-pill-label">{branchShortLabel}</span>
+                      <ChevronDown size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {addons.multiCurrencySwitch?.enabled && (
+                    <button
+                      type="button"
+                      className="pm-toters-mode-pill"
+                      onClick={() => setCurrencyMode((m) => (m === 'base' ? 'alt' : 'base'))}
+                      title="تبديل العملة"
+                    >
+                      <ArrowLeftRight size={13} />
+                      <span dir="ltr">{currencyMode === 'alt' ? (addons.multiCurrencySwitch.altSymbol || '$') : currency}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="pm-toters-circle-btn"
+                    onClick={handleShareMenu}
+                    aria-label="مشاركة المنيو"
+                    title="مشاركة المنيو"
+                  >
+                    <Share2 size={17} />
+                  </button>
+                  {addons.savedFavorites?.enabled && (
+                    <button
+                      type="button"
+                      className="pm-toters-circle-btn"
+                      onClick={() =>
+                        setMenuQuickFilter((prev) => (prev === 'favorites' ? 'all' : 'favorites'))
+                      }
+                      aria-label="المفضلة"
+                      title="المفضلة"
+                      style={{
+                        color: menuQuickFilter === 'favorites' ? '#ef4444' : undefined,
+                      }}
+                    >
+                      <Heart
+                        size={17}
+                        fill={menuQuickFilter === 'favorites' ? '#ef4444' : 'none'}
+                      />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="pm-toters-circle-btn"
+                    onClick={() => setSearchOpen(true)}
+                    aria-label="بحث في المنيو"
+                  >
+                    <Search size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {coverImages.length > 1 && (
+                <div className="pm-hero-dots" style={{ bottom: '52px' }}>
+                  {coverImages.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`بنر ${i + 1}`}
+                      className={`pm-hero-dot ${i === bannerIdx ? 'active' : ''}`}
+                      onClick={() => setBannerIdx(i)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pm-container">
+            <SeasonalHeroRibbon shape={activeShape} />
+
+            {/* Toters Floating Overlapping Store Info Card */}
+            <section className="pm-toters-store-card">
+              <div className="pm-toters-store-head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                  <div className="pm-toters-logo-badge">
+                    {rest.logo ? (
+                      <img src={rest.logo} alt={rest.n} referrerPolicy="no-referrer" />
+                    ) : (
+                      <span>{(rest.n || 'M').slice(0, 2)}</span>
                     )}
-                  </span>
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h1 className="pm-toters-store-title">{rest.n}</h1>
+                      <button
+                        type="button"
+                        onClick={() => setWorkModalOpen(true)}
+                        className={`pm-toters-status-tag ${openNow ? 'open' : 'closed'}`}
+                      >
+                        {openNow ? 'مفتوح' : 'مغلق'}
+                      </button>
+                    </div>
+                    {rest.tagline && (
+                      <p className="pm-toters-store-tagline">{rest.tagline}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  {rest.ph && (
+                    <a
+                      href={waLink(rest.ph, `مرحباً ${rest.n}، أود الاستفسار عن المنيو`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="pm-toters-info-icon"
+                      title="واتساب"
+                      style={{ color: accentText }}
+                    >
+                      <MessageCircle size={18} />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="pm-toters-info-icon"
+                    onClick={() => setMenuDrawerOpen(true)}
+                    aria-label="معلومات المتجر"
+                    title="معلومات المتجر"
+                  >
+                    <Store size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 3-Column Toters Metrics Strip (Delivery Time | Delivery Cost | Ratings) */}
+              {(() => {
+                const etaValue =
+                  addons.deliveryEtaTracker?.etaText ||
+                  addons.prepBadge?.etaText ||
+                  activeCity?.eta ||
+                  '30 - 45 دقائق';
+                const reviewCount = restaurantReviews.length;
+                const avgScore =
+                  reviewCount > 0
+                    ? (
+                        restaurantReviews.reduce(
+                          (acc: number, r: RestaurantReview) => acc + (Number(r.rate || r.stars || 5) || 5),
+                          0
+                        ) / reviewCount
+                      ).toFixed(1)
+                    : '4.8';
+                return (
+                  <div className="pm-toters-metrics">
+                    <div className="pm-toters-metric-cell">
+                      <span className="pm-toters-metric-label">
+                        {orderType === 'delivery' ? 'وقت التوصيل' : 'وقت التحضير'}
+                      </span>
+                      <strong className="pm-toters-metric-val">{etaValue}</strong>
+                    </div>
+
+                    <div className="pm-toters-metric-cell">
+                      <span className="pm-toters-metric-label">
+                        {orderType === 'delivery' ? 'كلفة التوصيل' : 'نوع الطلب'}
+                      </span>
+                      <strong className="pm-toters-metric-val">
+                        {orderType !== 'delivery' ? (
+                          ORDER_TYPE_META[orderType].label
+                        ) : qualifiesFreeDelivery || rawDeliveryFee === 0 ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            {rawDeliveryFee > 0 && (
+                              <span
+                                className="tabular-nums"
+                                style={{
+                                  fontSize: '11.5px',
+                                  color: 'var(--pm-muted)',
+                                  textDecoration: 'line-through',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {fmtMoney(rawDeliveryFee)}
+                              </span>
+                            )}
+                            <span style={{ color: '#ef4444', fontWeight: 900 }}>مجاني</span>
+                          </span>
+                        ) : (
+                          <span className="tabular-nums">{fmtMoney(effectiveDeliveryFee)}</span>
+                        )}
+                      </strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="pm-toters-metric-cell is-btn"
+                      onClick={() => {
+                        if (reviewsAllowSubmit) setRateModalOpen(true);
+                        else setWorkModalOpen(true);
+                      }}
+                    >
+                      <span className="pm-toters-metric-label">التقييم والمراجعات</span>
+                      <strong className="pm-toters-metric-val">
+                        <span className="tabular-nums">{avgScore}</span>
+                        <Star size={14} fill={brandColor} color={brandColor} />
+                        <span style={{ fontSize: '11.5px', color: 'var(--pm-muted)', fontWeight: 600 }}>
+                          {reviewCount > 0 ? `(${reviewCount})` : '(تقييم)'}
+                        </span>
+                      </strong>
+                    </button>
+                  </div>
                 );
               })()}
-              {freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery' ? (
-                <span style={{ color: accentText, fontWeight: 700 }}>
-                  توصيل مجاني فوق {fmtMoney(freeDeliveryMin)}
-                </span>
-              ) : null}
-              {!openNow && (rest.acceptOrdersWhenClosed || addons.closedNotice?.enabled) && (
-                <span style={{ color: isLightMenu ? '#b45309' : '#FCD34D' }}>
-                  · نستقبل الطلبات المسبقة
-                </span>
-              )}
-            </div>
+            </section>
+
+            {/* Toters Horizontal Coupon & Promo Ticket Cards */}
+            {(() => {
+              const tickets: Array<{
+                id: string;
+                badgeIcon: React.ReactNode;
+                badgeBg: string;
+                eyebrow: string;
+                title: string;
+                footer: string;
+                onClick?: () => void;
+              }> = [];
+
+              allPromoCoupons.forEach((cp) => {
+                const isApplied = appliedCoupon.toUpperCase() === cp.code.toUpperCase();
+                tickets.push({
+                  id: `cp-${cp.code}`,
+                  badgeIcon: <Percent size={12} />,
+                  badgeBg: '#ef4444',
+                  eyebrow: cp.minSubtotal ? `للطلبات فوق ${fmtMoney(cp.minSubtotal)}` : 'كود خصم',
+                  title:
+                    cp.discountType === 'fixed'
+                      ? `خصم ${fmtMoney(cp.discountValue)}`
+                      : `خصم ${cp.discountValue}%`,
+                  footer: isApplied ? `تم تطبيق (${cp.code}) ✓` : `اضغط لتطبيق ${cp.code}`,
+                  onClick: () => {
+                    handleApplyCoupon(cp.code);
+                  },
+                });
+              });
+
+              if (freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery') {
+                tickets.push({
+                  id: 'fd-ticket',
+                  badgeIcon: <Truck size={12} />,
+                  badgeBg: '#ef4444',
+                  eyebrow: `عند الطلب بـ ${fmtMoney(freeDeliveryMin)}`,
+                  title: 'توصيل مجاني',
+                  footer: qualifiesFreeDelivery ? 'مُفعّل لطلبك ✓' : 'يُطبق تلقائياً',
+                });
+              }
+
+              if (firstOrderPct > 0) {
+                tickets.push({
+                  id: 'first-order-ticket',
+                  badgeIcon: <Sparkles size={12} />,
+                  badgeBg: brandColor,
+                  eyebrow: 'على طلبك الأول',
+                  title: `خصم ${firstOrderPct}%`,
+                  footer: 'يُطبق تلقائياً',
+                });
+              }
+
+              if (addons.loyaltyPoints?.enabled) {
+                tickets.push({
+                  id: 'loyalty-ticket',
+                  badgeIcon: <Gift size={12} />,
+                  badgeBg: brandColor,
+                  eyebrow: 'نقاط الولاء',
+                  title: `اكسب ${addons.loyaltyPoints.pointsPerThousand || 1} نقطة / 1,000`,
+                  footer: loyaltyBalance > 0 ? `رصيدك: ${loyaltyBalance}` : 'يُطبق تلقائياً',
+                });
+              }
+
+              if (tickets.length === 0) return null;
+
+              return (
+                <div className="pm-toters-tickets-strip" aria-label="العروض والخصومات">
+                  {tickets.map((tk) => (
+                    <button
+                      key={tk.id}
+                      type="button"
+                      className="pm-toters-ticket"
+                      onClick={tk.onClick}
+                      style={{ cursor: tk.onClick ? 'pointer' : 'default' }}
+                    >
+                      <span className="pm-toters-ticket-icon" style={{ background: tk.badgeBg }}>
+                        {tk.badgeIcon}
+                      </span>
+                      <span className="pm-toters-ticket-eyebrow">{tk.eyebrow}</span>
+                      <strong className="pm-toters-ticket-title">{tk.title}</strong>
+                      <span className="pm-toters-ticket-divider" aria-hidden="true" />
+                      <span className="pm-toters-ticket-footer">{tk.footer}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
+        </>
+      ) : (
+        <>
+          {/* Top Sticky Action Bar (Standard Shapes) */}
+          <header className="pm-topbar">
+            <div className="pm-topbar-inner">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="pm-icon-btn"
+                  onClick={() => setMenuDrawerOpen(true)}
+                  aria-label="قائمة المطعم"
+                >
+                  <Menu size={20} />
+                </button>
 
-          {rest.ph && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-              <a
-                href={waLink(
-                  rest.ph,
-                  `مرحباً ${rest.n}، أود الاستفسار عن المنيو`
+                <button
+                  type="button"
+                  className="pm-order-type-pill"
+                  onClick={() => setOrderTypeModalOpen(true)}
+                >
+                  <span style={{ color: accentText }}>{ORDER_TYPE_META[orderType].icon}</span>
+                  <span>{ORDER_TYPE_META[orderType].label}</span>
+                  <ChevronDown size={14} style={{ color: 'var(--pm-muted)' }} />
+                </button>
+
+                {hasMultipleBranches && (
+                  <button
+                    type="button"
+                    className="pm-order-type-pill pm-branch-pill"
+                    onClick={onOpenBranchPicker}
+                    title="تبديل الفرع"
+                    aria-label="تبديل الفرع"
+                  >
+                    <GitBranch size={14} style={{ color: accentText, flexShrink: 0 }} />
+                    <span className="pm-branch-pill-label">{branchShortLabel}</span>
+                    <ChevronDown size={13} style={{ color: 'var(--pm-muted)', flexShrink: 0 }} />
+                  </button>
                 )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pm-icon-btn"
-                title="واتساب"
-                style={{
-                  color: isLightMenu ? '#047857' : '#34D399',
-                  borderColor: 'rgba(16, 185, 129, 0.35)',
-                  background: 'rgba(16, 185, 129, 0.14)',
-                }}
-              >
-                <MessageCircle size={18} />
-              </a>
-            </div>
-          )}
-        </section>
+              </div>
 
-        <SeasonalHeroRibbon shape={activeShape} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {addons.multiCurrencySwitch?.enabled && (
+                  <button
+                    type="button"
+                    className="pm-order-type-pill"
+                    onClick={() => setCurrencyMode((m) => (m === 'base' ? 'alt' : 'base'))}
+                    title="تبديل العملة"
+                    style={{
+                      height: '34px',
+                      padding: '0 10px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      gap: '5px',
+                      borderColor: currencyMode === 'alt' ? 'var(--pm-brand)' : undefined,
+                      color: currencyMode === 'alt' ? accentText : undefined,
+                    }}
+                  >
+                    <ArrowLeftRight size={13} />
+                    <span dir="ltr">{currencyMode === 'alt' ? (addons.multiCurrencySwitch.altSymbol || '$') : currency}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="pm-icon-btn"
+                  onClick={handleShareMenu}
+                  aria-label="مشاركة المنيو"
+                  title="مشاركة المنيو"
+                >
+                  <Share2 size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="pm-icon-btn"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="بحث في المنيو"
+                >
+                  <Search size={18} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="pm-container">
+            <SeasonalHeroRibbon shape={activeShape} />
+            {/* Hero Cover Carousel (only shown if merchant uploaded banners) */}
+            {coverImages.length > 0 && (
+              <div className="pm-hero-carousel">
+                <img
+                  src={coverImages[bannerIdx % coverImages.length]}
+                  alt={rest.n}
+                  referrerPolicy="no-referrer"
+                />
+                {coverImages.length > 1 && (
+                  <div className="pm-hero-dots">
+                    {coverImages.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-label={`بنر ${i + 1}`}
+                        className={`pm-hero-dot ${i === bannerIdx ? 'active' : ''}`}
+                        onClick={() => setBannerIdx(i)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Restaurant Identity Card */}
+            <section className={`pm-profile-card ${coverImages.length > 0 ? 'has-banner' : ''}`}>
+              <div className="pm-logo-box">
+                {rest.logo ? (
+                  <img src={rest.logo} alt={rest.n} referrerPolicy="no-referrer" />
+                ) : (
+                  <span>{(rest.n || 'M').slice(0, 2)}</span>
+                )}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h1 style={{ margin: 0, fontSize: '17.5px', fontWeight: 800, color: 'var(--pm-ink)' }}>
+                    {rest.n}
+                  </h1>
+                  <button
+                    type="button"
+                    className="pm-shape-pill"
+                    onClick={() => setWorkModalOpen(true)}
+                    style={{
+                      border: openNow ? '1px solid rgba(52, 211, 153, 0.36)' : '1px solid rgba(248, 113, 113, 0.36)',
+                      padding: '3px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: openNow ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)',
+                      color: openNow ? (isLightMenu ? '#047857' : '#34D399') : (isLightMenu ? '#B91C1C' : '#FCA5A5'),
+                    }}
+                  >
+                    {openNow ? 'مفتوح الآن' : 'مغلق'}
+                  </button>
+                </div>
+
+                {rest.tagline && (
+                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--pm-muted)', fontWeight: 500 }}>
+                    {rest.tagline}
+                  </p>
+                )}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    marginTop: '8px',
+                    fontSize: '12px',
+                    color: 'var(--pm-muted)',
+                  }}
+                >
+                  {addons.prepBadge?.enabled && (
+                    <span
+                      className="pm-shape-pill"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'var(--pm-soft)',
+                        border: '1px solid var(--pm-line)',
+                        color: 'var(--pm-ink)',
+                        padding: '2px 9px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      ⏱️ {addons.prepBadge.text || 'وقت التحضير'}: {addons.prepBadge.etaText || '20 - 30 دقيقة'}
+                    </span>
+                  )}
+                  {addons.deliveryEtaTracker?.enabled && (
+                    <span
+                      className="pm-shape-pill"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'rgba(59, 130, 246, 0.14)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        color: isLightMenu ? '#1d4ed8' : '#93C5FD',
+                        padding: '2px 9px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Truck size={12} style={{ display: 'inline', verticalAlign: '-2px', marginInlineEnd: '4px' }} />
+                      التوصيل: {addons.deliveryEtaTracker.etaText || '30 - 45 دقيقة'}
+                    </span>
+                  )}
+                  {addons.liveKitchenLoad?.enabled && (() => {
+                    const lvl = addons.liveKitchenLoad.level || 'moderate';
+                    const cfg =
+                      lvl === 'calm'
+                        ? { label: 'ضغط المطبخ: هادئ ⚡', bg: 'rgba(16, 185, 129, 0.14)', border: 'rgba(16, 185, 129, 0.32)', color: isLightMenu ? '#047857' : '#34D399' }
+                        : lvl === 'busy'
+                        ? { label: 'ضغط المطبخ: مزدحم 🔥', bg: 'rgba(239, 68, 68, 0.14)', border: 'rgba(239, 68, 68, 0.32)', color: isLightMenu ? '#b91c1c' : '#FCA5A5' }
+                        : { label: 'ضغط المطبخ: متوسط ⏱️', bg: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.32)', color: isLightMenu ? '#b45309' : '#FCD34D' };
+                    return (
+                      <span
+                        className="pm-shape-pill"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: cfg.bg,
+                          border: `1px solid ${cfg.border}`,
+                          color: cfg.color,
+                          padding: '2px 9px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span>{cfg.label}</span>
+                        {addons.liveKitchenLoad.customNote && (
+                          <span style={{ opacity: 0.85 }}>({addons.liveKitchenLoad.customNote})</span>
+                        )}
+                      </span>
+                    );
+                  })()}
+                  {freeDeliveryEnabled && freeDeliveryMin > 0 && orderType === 'delivery' ? (
+                    <span style={{ color: accentText, fontWeight: 700 }}>
+                      توصيل مجاني فوق {fmtMoney(freeDeliveryMin)}
+                    </span>
+                  ) : null}
+                  {!openNow && (rest.acceptOrdersWhenClosed || addons.closedNotice?.enabled) && (
+                    <span style={{ color: isLightMenu ? '#b45309' : '#FCD34D' }}>
+                      · نستقبل الطلبات المسبقة
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {rest.ph && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                  <a
+                    href={waLink(
+                      rest.ph,
+                      `مرحباً ${rest.n}، أود الاستفسار عن المنيو`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pm-icon-btn"
+                    title="واتساب"
+                    style={{
+                      color: isLightMenu ? '#047857' : '#34D399',
+                      borderColor: 'rgba(16, 185, 129, 0.35)',
+                      background: 'rgba(16, 185, 129, 0.14)',
+                    }}
+                  >
+                    <MessageCircle size={18} />
+                  </a>
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      )}
+
+      <div className="pm-container">
+        {!isToters && <SeasonalHeroRibbon shape={activeShape} />}
 
         {/* Closed Pre-order Notice Addon */}
         {addons.closedNotice?.enabled && !openNow && (
@@ -2893,6 +3254,92 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           </div>
         )}
 
+        {/* Toters Discovery Shelves: "اطلب مجدداً" & "شائع" */}
+        {isToters && allItems.length > 0 && menuQuickFilter === 'all' && (() => {
+          const reorderItems: MenuItem[] = [];
+          if (lastSavedOrderCart.length > 0) {
+            const seen = new Set<string>();
+            lastSavedOrderCart.forEach((l) => {
+              if (seen.has(l.itemId)) return;
+              const found = allItems.find((it) => it.id === l.itemId);
+              if (found) {
+                seen.add(found.id);
+                reorderItems.push(found);
+              }
+            });
+          } else if (favoriteIds.length > 0) {
+            favoriteIds.forEach((fid) => {
+              const found = allItems.find((it) => it.id === fid);
+              if (found) reorderItems.push(found);
+            });
+          }
+
+          const badgedPopular = allItems.filter(
+            (it) =>
+              (it.badges && it.badges.length > 0) ||
+              /شائع|طلباً|أفضل|best|popular/i.test(`${it.n} ${it.d || ''}`)
+          );
+          const popularShelf = (badgedPopular.length >= 2 ? badgedPopular : allItems).slice(0, 8);
+
+          const renderShelf = (heading: string, items: MenuItem[]) => {
+            if (items.length === 0) return null;
+            return (
+              <section className="pm-toters-shelf-wrap">
+                <h2 className="pm-toters-shelf-heading">{heading}</h2>
+                <div className="pm-toters-shelf">
+                  {items.map((it) => {
+                    const qty = getItemCartQty(it.id);
+                    const priceInfo = getPriceDisplay(
+                      it,
+                      currency,
+                      activeMenuDiscount,
+                      resolvedPlan.perms.itemDiscounts,
+                      activeAltCurrency
+                    );
+                    const itemEval = itemEvalMap.get(it.id);
+                    const unavailable = itemEval ? !itemEval.available : false;
+                    return (
+                      <article
+                        key={`${heading}_${it.id}`}
+                        className={`pm-toters-shelf-card ${unavailable ? 'unavailable' : ''}`}
+                        onClick={() => openProductModal(it)}
+                      >
+                        <div className="pm-toters-shelf-thumb">
+                          {it.img ? (
+                            <img src={it.img} alt={it.n} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="pm-toters-thumb-empty">
+                              <Utensils size={24} />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            className={`pm-toters-plus-btn ${qty > 0 ? 'has-qty' : ''}`}
+                            disabled={unavailable}
+                            aria-label={`أضف للسلة: ${it.n}`}
+                            onClick={(e) => quickAddOrOpenModal(it, e)}
+                          >
+                            {qty > 0 ? <span className="tabular-nums">{qty}</span> : <Plus size={18} strokeWidth={2.5} />}
+                          </button>
+                        </div>
+                        <b className="pm-toters-shelf-title">{it.n}</b>
+                        <span className="pm-toters-shelf-price tabular-nums">{priceInfo.main}</span>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          };
+
+          return (
+            <>
+              {reorderItems.length > 0 && renderShelf('اطلب مجدداً', reorderItems.slice(0, 8))}
+              {popularShelf.length > 0 && renderShelf('شائع', popularShelf)}
+            </>
+          );
+        })()}
+
         {/* Horizontal Category Strip + All Categories Trigger */}
         {allCategories.length > 0 && (
           <div className="pm-cat-strip-wrap">
@@ -3106,9 +3553,12 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                     </span>
                   </div>
 
-                  {/* 1) CLASSIC HORIZONTAL LIST LAYOUT */}
+                  {/* 1) CLASSIC HORIZONTAL LIST LAYOUT (or Toters Clean Divider List) */}
                   {layout === 'list' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div
+                      className={isToters ? 'pm-toters-list' : undefined}
+                      style={isToters ? undefined : { display: 'flex', flexDirection: 'column', gap: '10px' }}
+                    >
                       {catItems.map((it) => {
                         const qty = getItemCartQty(it.id);
                         const priceInfo = getPriceDisplay(it, currency, activeMenuDiscount, resolvedPlan.perms.itemDiscounts, activeAltCurrency);
@@ -3117,6 +3567,103 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                         const isFav = favoriteIds.includes(it.id);
                         const hasAllergyRisk = addons.dietaryAllergyRadar?.enabled && itemHasAllergyConflict(it, selectedAllergyFilters);
                         const isCompared = compareIds.includes(it.id);
+
+                        if (isToters) {
+                          const isPopular = Boolean(it.badges && it.badges.length > 0);
+                          return (
+                            <article
+                              key={it.id}
+                              className={`pm-toters-row ${unavailable ? 'unavailable' : ''}`}
+                              onClick={() => openProductModal(it)}
+                            >
+                              {/* Start (Right in RTL): Title, Description, Price & Subtle Inline Tags */}
+                              <div className="pm-toters-row-info">
+                                <h3 className="pm-toters-row-title">{it.n}</h3>
+                                {it.d && <p className="pm-toters-row-desc">{it.d}</p>}
+                                <div className="pm-toters-row-meta">
+                                  <span className="pm-toters-row-price tabular-nums">{priceInfo.main}</span>
+                                  {priceInfo.rawBefore > 0 && (
+                                    <span className="pm-toters-row-old tabular-nums">{fmtMoney(priceInfo.rawBefore)}</span>
+                                  )}
+                                  {isPopular && (
+                                    <span className="pm-toters-popular-tag">
+                                      <Flame size={12} fill="#f97316" color="#f97316" /> شائع
+                                    </span>
+                                  )}
+                                  {addons.flashQuantityScarcity?.enabled && !unavailable && (
+                                    <span className="pm-toters-scarcity-tag">
+                                      {addons.flashQuantityScarcity.badgePrefix || 'متبقي'} {getScarcityRemaining(it.id, it.n, addons.flashQuantityScarcity.defaultRemaining || 4)}
+                                    </span>
+                                  )}
+                                  {hasAllergyRisk && (
+                                    <span className="pm-toters-allergy-tag">
+                                      ⚠️ {addons.dietaryAllergyRadar?.warningText || 'تحقق من المكونات'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* End (Left in RTL): Square Rounded Thumb + Floating Circular + */}
+                              <div className="pm-toters-row-thumb">
+                                {it.img ? (
+                                  <img src={it.img} alt={it.n} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="pm-toters-thumb-empty">
+                                    <Utensils size={22} />
+                                  </div>
+                                )}
+                                {addons.savedFavorites?.enabled && (
+                                  <button
+                                    type="button"
+                                    className="pm-fav-btn"
+                                    aria-label="مفضلة"
+                                    onClick={(e) => toggleFavorite(it.id, e)}
+                                  >
+                                    <Heart size={11} color="#f87171" fill={isFav ? '#f87171' : 'none'} />
+                                  </button>
+                                )}
+                                {addons.dishCompareDrawer?.enabled && (
+                                  <button
+                                    type="button"
+                                    aria-label={`مقارنة ${it.n}`}
+                                    onClick={(e) => toggleCompareItem(it.id, e)}
+                                    style={{
+                                      position: 'absolute',
+                                      top: '5px',
+                                      insetInlineStart: '5px',
+                                      width: '22px',
+                                      height: '22px',
+                                      borderRadius: '50%',
+                                      border: isCompared ? '1.5px solid var(--pm-brand)' : '1px solid var(--pm-line)',
+                                      background: isCompared ? brandColor : 'color-mix(in srgb, var(--pm-card) 88%, transparent)',
+                                      color: isCompared ? brandInk : 'var(--pm-muted)',
+                                      display: 'grid',
+                                      placeItems: 'center',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <Scale size={11} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className={`pm-toters-plus-btn ${qty > 0 ? 'has-qty' : ''}`}
+                                  disabled={unavailable}
+                                  aria-label={`أضف للسلة: ${it.n}`}
+                                  onClick={(e) => quickAddOrOpenModal(it, e)}
+                                >
+                                  {unavailable ? (
+                                    itemEval.outOfSchedule ? <Clock size={14} /> : 'نفد'
+                                  ) : qty > 0 ? (
+                                    <span className="tabular-nums">{qty}</span>
+                                  ) : (
+                                    <Plus size={18} strokeWidth={2.5} />
+                                  )}
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        }
 
                         return (
                           <article
@@ -3736,24 +4283,40 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 setCartOpen(true);
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShoppingBag size={19} />
-                <span>{totalCount > 0 ? 'عرض السلة' : 'سلة الطلبات'}</span>
-                <span
-                  className="tabular-nums"
-                  style={{
-                    background: 'rgba(255,255,255,0.22)',
-                    borderRadius: '99px',
-                    padding: '2px 9px',
-                    fontSize: '12.5px',
-                  }}
-                >
-                  {totalCount}
-                </span>
-              </span>
-              <span className="tabular-nums">
-                {totalCount > 0 ? `${fmtMoney(subtotal)} ←` : 'افتح السلة ←'}
-              </span>
+              {isToters ? (
+                <>
+                  <span className="pm-toters-dock-badge tabular-nums">
+                    {totalCount > 0 ? totalCount : <ShoppingBag size={16} />}
+                  </span>
+                  <span style={{ fontWeight: 900, fontSize: '15px' }}>
+                    {totalCount > 0 ? 'عرض السلة' : 'سلة الطلبات'}
+                  </span>
+                  <span className="tabular-nums" style={{ fontWeight: 800, fontSize: '14px' }}>
+                    {totalCount > 0 ? fmtMoney(subtotal) : 'افتح السلة'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShoppingBag size={19} />
+                    <span>{totalCount > 0 ? 'عرض السلة' : 'سلة الطلبات'}</span>
+                    <span
+                      className="tabular-nums"
+                      style={{
+                        background: 'rgba(255,255,255,0.22)',
+                        borderRadius: '99px',
+                        padding: '2px 9px',
+                        fontSize: '12.5px',
+                      }}
+                    >
+                      {totalCount}
+                    </span>
+                  </span>
+                  <span className="tabular-nums">
+                    {totalCount > 0 ? `${fmtMoney(subtotal)} ←` : 'افتح السلة ←'}
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -3764,14 +4327,22 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
           ================================================================ */}
       {activeProduct && (
         <div className="pm-modal-backdrop" onClick={() => setActiveProduct(null)}>
-          <div className="pm-sheet" onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`pm-sheet ${isToters ? 'pm-toters-product-sheet' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ position: 'relative' }}>
               {activeProduct.img ? (
                 <img
                   src={activeProduct.img}
                   alt={activeProduct.n}
                   referrerPolicy="no-referrer"
-                  style={{ width: '100%', aspectRatio: '16 / 10', objectFit: 'cover', display: 'block' }}
+                  style={{
+                    width: '100%',
+                    aspectRatio: isToters ? '16 / 11' : '16 / 10',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
                 />
               ) : (
                 <div
@@ -3787,16 +4358,45 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   <Utensils size={40} />
                 </div>
               )}
+
+              {isToters && addons.savedFavorites?.enabled && (
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorite(activeProduct.id, e)}
+                  aria-label="إضافة للمفضلة"
+                  style={{
+                    position: 'absolute',
+                    top: '14px',
+                    insetInlineStart: '14px',
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: 'var(--pm-card)',
+                    border: '1px solid var(--pm-line)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    cursor: 'pointer',
+                    color: favoriteIds.includes(activeProduct.id) ? '#ef4444' : 'var(--pm-ink)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                  }}
+                >
+                  <Heart
+                    size={17}
+                    fill={favoriteIds.includes(activeProduct.id) ? '#ef4444' : 'none'}
+                  />
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setActiveProduct(null)}
                 aria-label="إغلاق"
                 style={{
                   position: 'absolute',
-                  top: '12px',
-                  insetInlineEnd: '12px',
-                  width: '36px',
-                  height: '36px',
+                  top: '14px',
+                  insetInlineEnd: '14px',
+                  width: '38px',
+                  height: '38px',
                   borderRadius: '50%',
                   background: 'var(--pm-card)',
                   border: '1px solid var(--pm-line)',
@@ -3811,10 +4411,17 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
               </button>
             </div>
 
-            <div style={{ padding: '16px 18px 22px' }}>
+            <div className={isToters ? 'pm-toters-sheet-body' : undefined} style={isToters ? undefined : { padding: '16px 18px 22px' }}>
+              {isToters && activeProduct.badges && activeProduct.badges.length > 0 && (
+                <div style={{ marginBottom: '6px' }}>
+                  <span className="pm-toters-popular-pill">
+                    <Flame size={12} fill="#f97316" color="#f97316" /> شائع
+                  </span>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--pm-ink)' }}>{activeProduct.n}</h2>
-                {activeProduct.badges?.map((b, i) => renderBadge(b, i))}
+                <h2 style={{ margin: 0, fontSize: isToters ? '21px' : '20px', fontWeight: 900, color: 'var(--pm-ink)' }}>{activeProduct.n}</h2>
+                {!isToters && activeProduct.badges?.map((b, i) => renderBadge(b, i))}
               </div>
 
               {(activeProduct.prepTime || activeProduct.calories || selectedSize?.cal) && (
@@ -3833,9 +4440,25 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
               )}
 
               {activeProduct.d && (
-                <p style={{ margin: '0 0 14px', fontSize: '13.5px', color: 'var(--pm-muted)', lineHeight: 1.65 }}>
+                <p style={{ margin: '0 0 12px', fontSize: '13.5px', color: 'var(--pm-muted)', lineHeight: 1.65 }}>
                   {activeProduct.d}
                 </p>
+              )}
+
+              {isToters && (
+                <div
+                  className="tabular-nums"
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 900,
+                    color: 'var(--pm-ink)',
+                    paddingBottom: '12px',
+                    marginBottom: '12px',
+                    borderBottom: '1px solid var(--pm-line)',
+                  }}
+                >
+                  {formatNumber(modalBaseDiscounted)} {currency}
+                </div>
               )}
 
               {/* Allergens Accordion */}
@@ -3891,9 +4514,23 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 if (validSizes.length === 0) return null;
                 return (
                   <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 800, color: 'var(--pm-ink)' }}>
-                      الحجم <span style={{ color: accentText, fontSize: '12px' }}>(مطلوب)</span>
-                    </h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
+                        الحجم
+                      </h4>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          color: accentText,
+                          background: isToters ? 'var(--pm-soft)' : 'transparent',
+                          padding: isToters ? '3px 8px' : 0,
+                          borderRadius: '8px',
+                        }}
+                      >
+                        مطلوب
+                      </span>
+                    </div>
                     {validSizes.map((sz, idx) => {
                       const isSel = selectedSize ? getSizeLabel(selectedSize) === sz.n : false;
                       const discountedSzPrice = applyMenuPriceDiscount(sz.p, activeMenuDiscount);
@@ -3941,13 +4578,20 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 return (
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--pm-ink)' }}>
+                      <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
                         الاختيارات <span style={{ color: accentText, fontSize: '12px', fontWeight: 700 }}>(مجاني)</span>
                       </h4>
-                      <span style={{ fontSize: '11.5px', color: 'var(--pm-muted)', fontWeight: 600 }}>
-                        {max === 1
-                          ? 'خيار واحد مسموح'
-                          : `${max} خيارات مسموح لك`}
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: 'var(--pm-muted)',
+                          fontWeight: 700,
+                          background: isToters ? 'var(--pm-soft)' : 'transparent',
+                          padding: isToters ? '3px 8px' : 0,
+                          borderRadius: '8px',
+                        }}
+                      >
+                        {max === 1 ? 'خيار واحد مسموح' : `${max} خيارات مسموح لك`}
                       </span>
                     </div>
                     {validChoices.map((label, idx) => {
@@ -3996,7 +4640,23 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                 if (validExtras.length === 0) return null;
                 return (
                   <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 800, color: 'var(--pm-ink)' }}>إضافات</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>إضافات</h4>
+                      {isToters && (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--pm-muted)',
+                            fontWeight: 700,
+                            background: 'var(--pm-soft)',
+                            padding: '3px 8px',
+                            borderRadius: '8px',
+                          }}
+                        >
+                          اختياري
+                        </span>
+                      )}
+                    </div>
                     {validExtras.map((ex, idx) => {
                       const checked = selectedExtras.some((e) => getExtraLabel(e) === ex.n);
                       return (
@@ -4025,6 +4685,29 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   </div>
                 );
               })()}
+
+              {/* Special Instructions Box ("أي تعليمات خاصة؟" — Toters style) */}
+              {isToters && (
+                <div style={{ marginBottom: '16px' }}>
+                  <h4 style={{ margin: '0 0 8px', fontSize: '14.5px', fontWeight: 900, color: 'var(--pm-ink)' }}>
+                    أي تعليمات خاصة؟
+                  </h4>
+                  <textarea
+                    rows={2}
+                    value={modalItemNote}
+                    onChange={(e) => setModalItemNote(e.target.value)}
+                    placeholder="اكتبها هنا"
+                    style={{
+                      width: '100%',
+                      resize: 'none',
+                      fontSize: '13.5px',
+                      fontFamily: 'inherit',
+                      borderRadius: '14px',
+                      padding: '10px 14px',
+                    }}
+                  />
+                </div>
+              )}
 
               {rest.taxNote && (
                 <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--pm-muted)', textAlign: 'center' }}>
@@ -4106,13 +4789,18 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
 
               {/* Quantity & Add to Cart Footer */}
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--pm-line)',
-                }}
+                className={isToters ? 'pm-toters-sheet-footer' : undefined}
+                style={
+                  isToters
+                    ? undefined
+                    : {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid var(--pm-line)',
+                      }
+                }
               >
                 <div
                   style={{
@@ -4174,15 +4862,15 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                     background: brandColor,
                     color: brandInk,
                     padding: '12px 15px',
-                    fontSize: '14px',
-                    fontWeight: 800,
+                    fontSize: '14.5px',
+                    fontWeight: 900,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                   }}
                 >
-                  <span>إضافة {modalQty} للسلة</span>
+                  <span>{isToters ? 'إضافة' : `إضافة ${modalQty} للسلة`}</span>
                   <span className="tabular-nums">
                     {formatNumber(modalUnitPrice * modalQty)} {currency}
                   </span>
@@ -4238,11 +4926,13 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                     <ChevronLeft size={16} style={{ transform: 'rotate(180deg)' }} />
                   </button>
                 )}
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--pm-ink)' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--pm-ink)' }}>
                   {checkoutStep === 'done'
                     ? 'تم تأكيد طلبك'
                     : checkoutStep === 'details'
                     ? 'بيانات التوصيل والاستلام'
+                    : isToters
+                    ? 'سلتي'
                     : `سلة الطلبات (${totalCount})`}
                 </h2>
               </div>
@@ -4538,84 +5228,82 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                     </div>
                   )}
 
+                  {/* Toters Store Identity Card inside Cart Step 1 */}
+                  {isToters && (
+                    <div className="pm-toters-cart-store-card">
+                      <div className="pm-toters-cart-store-logo">
+                        {rest.logo ? (
+                          <img src={rest.logo} alt={rest.n} referrerPolicy="no-referrer" />
+                        ) : (
+                          <span>{(rest.n || 'M').slice(0, 2)}</span>
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <b style={{ fontSize: '15px', fontWeight: 900, color: 'var(--pm-ink)', display: 'block' }}>
+                          {rest.n}
+                        </b>
+                        <span style={{ fontSize: '12px', color: 'var(--pm-muted)', fontWeight: 600 }}>
+                          {addons.deliveryEtaTracker?.etaText || addons.prepBadge?.etaText || '30 - 45 دقائق'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Cart Line Items with Notes */}
-                  <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {cart.map((line) => (
-                      <div
-                        key={line.key}
-                        style={{
-                          background: 'var(--pm-soft)',
-                          border: '1px solid var(--pm-line)',
-                          borderRadius: '14px',
-                          padding: '12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: '10px',
-                          }}
-                        >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <b style={{ fontSize: '14.5px', color: 'var(--pm-ink)', display: 'block' }}>{line.name}</b>
-                            {(line.size || line.choices.length > 0 || line.extras.length > 0) && (
-                              <div style={{ fontSize: '11.5px', color: 'var(--pm-muted)', marginTop: '2px' }}>
-                                {[line.size, ...line.choices, ...line.extras].filter(Boolean).join(' · ')}
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: isToters ? '0' : '10px',
+                    }}
+                  >
+                    {cart.map((line) =>
+                      isToters ? (
+                        <div key={line.key} className="pm-toters-cart-row">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                              <div className="pm-toters-cart-thumb">
+                                {line.img ? (
+                                  <img src={line.img} alt={line.name} referrerPolicy="no-referrer" />
+                                ) : (
+                                  <Utensils size={18} style={{ color: 'var(--pm-muted)' }} />
+                                )}
                               </div>
-                            )}
-                            <div className="tabular-nums" style={{ fontSize: '14.5px', fontWeight: 900, color: accentText, marginTop: '4px' }}>
-                              {formatNumber(line.unitPrice * line.qty)} {currency}
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <b style={{ fontSize: '14px', fontWeight: 800, color: 'var(--pm-ink)', display: 'block' }}>
+                                  {line.name}
+                                </b>
+                                {(line.size || line.choices.length > 0 || line.extras.length > 0) && (
+                                  <div style={{ fontSize: '11.5px', color: 'var(--pm-muted)', marginTop: '2px' }}>
+                                    {[line.size, ...line.choices, ...line.extras].filter(Boolean).join(' · ')}
+                                  </div>
+                                )}
+                                <div className="tabular-nums" style={{ fontSize: '13.5px', fontWeight: 900, color: 'var(--pm-ink)', marginTop: '3px' }}>
+                                  {formatNumber(line.unitPrice * line.qty)} {currency}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pm-toters-stepper">
+                              <button
+                                type="button"
+                                onClick={() => updateCartLineQty(line.key, 1)}
+                                aria-label="زيادة الكمية"
+                              >
+                                <Plus size={14} strokeWidth={2.5} />
+                              </button>
+                              <b className="tabular-nums">{line.qty}</b>
+                              <button
+                                type="button"
+                                onClick={() => updateCartLineQty(line.key, -1)}
+                                aria-label={line.qty <= 1 ? 'حذف الصنف' : 'إنقاص الكمية'}
+                              >
+                                {line.qty <= 1 ? <Trash2 size={14} /> : <Minus size={14} />}
+                              </button>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <button
-                              type="button"
-                              onClick={() => updateCartLineQty(line.key, -1)}
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--pm-line)',
-                                background: 'var(--pm-card)',
-                                color: 'var(--pm-ink)',
-                                fontWeight: 800,
-                                fontSize: '16px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              -
-                            </button>
-                            <b className="tabular-nums" style={{ minWidth: '22px', textAlign: 'center', fontSize: '14px', color: 'var(--pm-ink)' }}>
-                              {line.qty}
-                            </b>
-                            <button
-                              type="button"
-                              onClick={() => updateCartLineQty(line.key, 1)}
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                border: '1px solid color-mix(in srgb, var(--pm-brand) 45%, transparent)',
-                                background: brandColor,
-                                color: brandInk,
-                                fontWeight: 800,
-                                fontSize: '16px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Note for each product */}
-                        <div>
                           <input
                             type="text"
                             className="pm-field-card"
@@ -4626,16 +5314,108 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                               width: '100%',
                               fontSize: '12px',
                               padding: '7px 10px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--pm-line)',
-                              background: 'var(--pm-card)',
-                              color: 'var(--pm-ink)',
-                              outline: 'none',
+                              marginTop: '8px',
+                              borderRadius: '10px',
                             }}
                           />
                         </div>
-                      </div>
-                    ))}
+                      ) : (
+                        <div
+                          key={line.key}
+                          style={{
+                            background: 'var(--pm-soft)',
+                            border: '1px solid var(--pm-line)',
+                            borderRadius: '14px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '10px',
+                            }}
+                          >
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <b style={{ fontSize: '14.5px', color: 'var(--pm-ink)', display: 'block' }}>{line.name}</b>
+                              {(line.size || line.choices.length > 0 || line.extras.length > 0) && (
+                                <div style={{ fontSize: '11.5px', color: 'var(--pm-muted)', marginTop: '2px' }}>
+                                  {[line.size, ...line.choices, ...line.extras].filter(Boolean).join(' · ')}
+                                </div>
+                              )}
+                              <div className="tabular-nums" style={{ fontSize: '14.5px', fontWeight: 900, color: accentText, marginTop: '4px' }}>
+                                {formatNumber(line.unitPrice * line.qty)} {currency}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => updateCartLineQty(line.key, -1)}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  border: '1px solid var(--pm-line)',
+                                  background: 'var(--pm-card)',
+                                  color: 'var(--pm-ink)',
+                                  fontWeight: 800,
+                                  fontSize: '16px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                -
+                              </button>
+                              <b className="tabular-nums" style={{ minWidth: '22px', textAlign: 'center', fontSize: '14px', color: 'var(--pm-ink)' }}>
+                                {line.qty}
+                              </b>
+                              <button
+                                type="button"
+                                onClick={() => updateCartLineQty(line.key, 1)}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  border: '1px solid color-mix(in srgb, var(--pm-brand) 45%, transparent)',
+                                  background: brandColor,
+                                  color: brandInk,
+                                  fontWeight: 800,
+                                  fontSize: '16px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Note for each product */}
+                          <div>
+                            <input
+                              type="text"
+                              className="pm-field-card"
+                              placeholder="ملاحظة لهذا المنتج (مثال: بدون بصل / صوص إضافي)"
+                              value={line.notes || ''}
+                              onChange={(e) => updateCartLineNotes(line.key, e.target.value)}
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                padding: '7px 10px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--pm-line)',
+                                background: 'var(--pm-card)',
+                                color: 'var(--pm-ink)',
+                                outline: 'none',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    )}
                   </div>
 
                   {/* Cart Upsell Suggestions (Inside Cart) */}
@@ -5345,10 +6125,30 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                   style={{
                     flexShrink: 0,
                     padding: '12px 18px 16px',
-                    borderTop: '1px solid var(--pm-line)',
+                    borderTop: isToters ? '1.5px dashed var(--pm-line)' : '1px solid var(--pm-line)',
                     background: 'var(--pm-card)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
                   }}
                 >
+                  {isToters && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingBottom: '4px',
+                        fontSize: '15px',
+                        fontWeight: 900,
+                      }}
+                    >
+                      <span style={{ color: 'var(--pm-ink)' }}>المجموع الجزئي</span>
+                      <span className="tabular-nums" style={{ color: 'var(--pm-ink)' }}>
+                        {fmtMoney(finalTotal)}
+                      </span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -5366,14 +6166,41 @@ const PublicMenuContent: React.FC<PublicMenuContentProps> = ({
                       borderRadius: '14px',
                       background: belowMinOrder ? '#64748B' : brandColor,
                       color: belowMinOrder ? '#ffffff' : brandInk,
-                      padding: '14px',
-                      fontSize: '15.5px',
-                      fontWeight: 800,
+                      padding: '13px 16px',
+                      fontSize: '15px',
+                      fontWeight: 900,
                       cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: isToters ? 'space-between' : 'center',
                     }}
                   >
-                    متابعة الطلب
+                    <span>{isToters ? 'إتمام الشراء' : 'متابعة الطلب'}</span>
+                    {isToters && (
+                      <span className="tabular-nums" style={{ fontSize: '14px', fontWeight: 800 }}>
+                        {fmtMoney(finalTotal)}
+                      </span>
+                    )}
                   </button>
+                  {isToters && (
+                    <button
+                      type="button"
+                      onClick={() => setCartOpen(false)}
+                      style={{
+                        width: '100%',
+                        border: 'none',
+                        borderRadius: '14px',
+                        background: 'var(--pm-soft)',
+                        color: 'var(--pm-ink)',
+                        padding: '12px 16px',
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      أضف المزيد
+                    </button>
+                  )}
                 </div>
               </>
             ) : (

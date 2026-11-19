@@ -8742,6 +8742,32 @@ html[data-theme="dark"] .mp-items-count-box {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 }
 
+.mp-shape-preview-toters {
+  background: linear-gradient(180deg, rgba(0, 178, 134, 0.18) 0%, var(--bg) 52%);
+  border-color: rgba(0, 178, 134, 0.42);
+}
+.mp-shape-preview-toters .mp-shape-mini-banner {
+  background: linear-gradient(120deg, #00B286, #059669);
+  border-color: transparent;
+  border-radius: 8px;
+}
+.mp-shape-preview-toters .mp-shape-mini-avatar {
+  border-radius: 50%;
+  background: #00B286;
+  border: 2px solid var(--surface);
+  margin-top: -10px;
+}
+.mp-shape-preview-toters .mp-shape-preview-box {
+  border-radius: 12px;
+  border-color: var(--line);
+  margin-top: -8px;
+  box-shadow: 0 4px 12px rgba(0, 178, 134, 0.12);
+}
+.mp-shape-preview-toters .mp-shape-preview-btn {
+  border-radius: 50%;
+  background: #00B286;
+}
+
 /* ===== Customer Menu Shape-Aware Utility Classes ===== */
 .pm-shape-pill {
   border-radius: 99px;
@@ -11077,5 +11103,840 @@ html[data-theme] [data-home-theme="dark"] .mp-auth-glass-card select option {
     height: 38px;
   }
 }
+
+/* ========================================================================= */
+/* 11. TOTERS — Full-Bleed Hero, Floating Store Card, Tickets, Shelves & Rows */
+/* ========================================================================= */
+.pm-toters-hero-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.pm-toters-hero-banner {
+  position: relative;
+  width: 100%;
+  height: 224px;
+  overflow: hidden;
+  background: var(--pm-soft);
+}
+
+.pm-toters-hero-banner.no-img {
+  height: 146px;
+}
+
+@media (min-width: 640px) {
+  .pm-toters-hero-banner {
+    height: 272px;
+  }
+  .pm-toters-hero-banner.no-img {
+    height: 158px;
+  }
+}
+
+.pm-toters-hero-banner > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-toters-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.04) 55%,
+    rgba(0, 0, 0, 0.24) 100%
+  );
+  pointer-events: none;
+}
+
+.pm-toters-hero-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--pm-brand) 0%, color-mix(in srgb, var(--pm-brand) 62%, #064e3b) 100%);
+}
+
+.pm-toters-hero-controls {
+  position: absolute;
+  top: 14px;
+  inset-inline: 14px;
+  z-index: 6;
+  max-width: 712px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pm-toters-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, var(--pm-card) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--pm-ink);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.pm-toters-circle-btn:hover {
+  transform: scale(1.05);
+}
+
+.pm-toters-mode-pill {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, var(--pm-card) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--pm-ink);
+  font-size: 12.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+/* Floating Overlapping Store Card */
+.pm-toters-store-card {
+  position: relative;
+  z-index: 8;
+  margin-top: -42px;
+  margin-bottom: 12px;
+  background: var(--pm-card);
+  border: 1px solid var(--pm-line);
+  border-radius: 20px;
+  padding: 15px 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+
+.pm-page.pm-light .pm-toters-store-card {
+  box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.12);
+}
+
+.pm-toters-store-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pm-toters-logo-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--pm-card);
+  background: var(--pm-brand);
+  color: var(--pm-on-brand, #ffffff);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 17px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.pm-toters-logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-toters-store-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 900;
+  color: var(--pm-ink);
+  line-height: 1.25;
+}
+
+.pm-toters-status-tag {
+  border: 0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pm-toters-status-tag.open {
+  background: color-mix(in srgb, var(--pm-brand) 16%, transparent);
+  color: var(--pm-brand);
+}
+
+.pm-toters-status-tag.closed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.pm-toters-store-tagline {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  line-height: 1.45;
+}
+
+.pm-toters-info-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--pm-line);
+  background: var(--pm-soft);
+  color: var(--pm-ink);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.pm-toters-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pm-line);
+}
+
+.pm-toters-metric-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  padding: 2px 6px;
+}
+
+.pm-toters-metric-cell:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 16%;
+  bottom: 16%;
+  inset-inline-end: 0;
+  width: 1px;
+  background: var(--pm-line);
+}
+
+.pm-toters-metric-cell.is-btn {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pm-toters-metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pm-muted);
+}
+
+.pm-toters-metric-val {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--pm-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Notched Coupon & Offer Tickets */
+.pm-toters-tickets-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 2px 10px;
+  margin-bottom: 6px;
+}
+
+.pm-toters-tickets-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.pm-toters-ticket {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-width: 152px;
+  max-width: 196px;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--pm-line);
+  background: var(--pm-card);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-page.pm-light .pm-toters-ticket {
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+}
+
+.pm-toters-ticket:hover {
+  transform: translateY(-1px);
+  border-color: var(--pm-brand);
+}
+
+.pm-toters-ticket-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.pm-toters-ticket-eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--pm-muted);
+  line-height: 1.3;
+}
+
+.pm-toters-ticket-title {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: var(--pm-ink);
+  line-height: 1.3;
+}
+
+.pm-toters-ticket-divider {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  border-top: 1px dashed var(--pm-line);
+  margin: 7px 0 4px;
+}
+
+.pm-toters-ticket-divider::before,
+.pm-toters-ticket-divider::after {
+  content: '';
+  position: absolute;
+  top: -6.5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--pm-bg);
+  border: 1px solid var(--pm-line);
+}
+
+.pm-toters-ticket-divider::before {
+  inset-inline-start: -18px;
+}
+
+.pm-toters-ticket-divider::after {
+  inset-inline-end: -18px;
+}
+
+.pm-toters-ticket-footer {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pm-muted);
+}
+
+/* Horizontal Shelves ("اطلب مجدداً" & "شائع") */
+.pm-toters-shelf-wrap {
+  margin: 14px 0 18px;
+}
+
+.pm-toters-shelf-heading {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--pm-ink);
+}
+
+.pm-toters-shelf {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.pm-toters-shelf::-webkit-scrollbar {
+  display: none;
+}
+
+.pm-toters-shelf-card {
+  flex-shrink: 0;
+  width: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.pm-toters-shelf-card.unavailable {
+  opacity: 0.5;
+}
+
+.pm-toters-shelf-thumb {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--pm-soft);
+  border: 1px solid var(--pm-line);
+}
+
+.pm-toters-shelf-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-toters-thumb-empty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--pm-muted);
+}
+
+.pm-toters-plus-btn {
+  position: absolute;
+  bottom: 8px;
+  inset-inline-end: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--pm-line);
+  background: var(--pm-card);
+  color: var(--pm-brand);
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  transition: transform 0.14s ease, background-color 0.14s ease;
+}
+
+.pm-toters-plus-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.pm-toters-plus-btn.has-qty {
+  background: var(--pm-brand);
+  color: var(--pm-on-brand, #ffffff);
+  border-color: var(--pm-brand);
+}
+
+.pm-toters-shelf-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--pm-ink);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pm-toters-shelf-price {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--pm-ink);
+}
+
+/* Flat Underline Category Bar (Sticky to Top 0 in Toters Mode) */
+.pm-page[data-shape='toters'] .pm-cat-strip-wrap {
+  top: 0;
+  margin-top: 4px;
+  padding: 10px 0 0;
+  background: var(--pm-bg);
+  border-bottom: 1px solid var(--pm-line);
+}
+
+.pm-page[data-shape='toters'] .pm-cat-strip {
+  gap: 14px;
+  padding: 0 2px;
+}
+
+.pm-page[data-shape='toters'] .pm-cat-chip {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 8px 4px 11px;
+  color: var(--pm-muted);
+  font-size: 14px;
+  font-weight: 700;
+  position: relative;
+}
+
+.pm-page[data-shape='toters'] .pm-cat-chip:hover {
+  color: var(--pm-ink);
+}
+
+.pm-page[data-shape='toters'] .pm-cat-chip.active {
+  color: var(--pm-brand) !important;
+  font-weight: 900;
+}
+
+.pm-page[data-shape='toters'] .pm-cat-chip.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  inset-inline: 2px;
+  height: 3px;
+  border-radius: 99px 99px 0 0;
+  background: var(--pm-brand);
+}
+
+.pm-page[data-shape='toters'] .pm-sec-title h2 {
+  font-size: 19px;
+  font-weight: 900;
+}
+
+/* Clean Divider-Separated Product List Rows */
+.pm-toters-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-toters-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 2px;
+  border-bottom: 1px solid var(--pm-line);
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+
+.pm-toters-row:last-child {
+  border-bottom: 0;
+}
+
+.pm-toters-row.unavailable {
+  opacity: 0.5;
+}
+
+.pm-toters-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pm-toters-row-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--pm-ink);
+  line-height: 1.35;
+}
+
+.pm-toters-row-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pm-toters-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.pm-toters-row-price {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--pm-ink);
+}
+
+.pm-toters-row-old {
+  font-size: 12px;
+  color: var(--pm-muted);
+  text-decoration: line-through;
+}
+
+.pm-toters-popular-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ea580c;
+}
+
+.pm-toters-scarcity-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 1px 7px;
+  border-radius: 99px;
+}
+
+.pm-toters-allergy-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 1px 7px;
+  border-radius: 99px;
+}
+
+.pm-toters-row-thumb {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--pm-soft);
+  border: 1px solid var(--pm-line);
+}
+
+.pm-toters-row-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-page[data-shape='toters'] .pm-menu-card {
+  border-radius: 16px;
+  border: 1px solid var(--pm-line);
+}
+
+/* Toters Sticky Bottom Cart Sheet */
+.pm-page[data-shape='toters'] .pm-floating-dock {
+  background: var(--pm-card);
+  border-top: 1px solid var(--pm-line);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.25);
+}
+
+.pm-page.pm-light[data-shape='toters'] .pm-floating-dock {
+  box-shadow: 0 -8px 26px rgba(15, 23, 42, 0.1);
+}
+
+.pm-page[data-shape='toters'] .pm-cart-cta {
+  background: var(--pm-brand);
+  border: 0;
+  border-radius: 13px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--pm-brand) 28%, transparent);
+}
+
+.pm-toters-dock-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+/* Toters Product Detail Bottom Sheet */
+.pm-toters-product-sheet {
+  border-radius: 26px 26px 0 0;
+}
+
+@media (min-width: 640px) {
+  .pm-toters-product-sheet {
+    border-radius: 24px;
+  }
+}
+
+.pm-toters-sheet-body {
+  padding: 16px 18px 0;
+}
+
+.pm-toters-popular-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.12);
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.pm-page[data-shape='toters'] .pm-sheet .pm-option-row {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--pm-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 13px 2px;
+  margin-bottom: 0;
+}
+
+.pm-page[data-shape='toters'] .pm-sheet .pm-option-row.selected {
+  background: color-mix(in srgb, var(--pm-brand) 8%, transparent) !important;
+}
+
+.pm-toters-sheet-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 8px;
+  background: var(--pm-card);
+  border-top: 1px solid var(--pm-line);
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Toters Cart Drawer Step 1 */
+.pm-toters-cart-store-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--pm-line);
+  background: var(--pm-soft);
+  margin-bottom: 12px;
+}
+
+.pm-toters-cart-store-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1.5px solid var(--pm-line);
+  background: var(--pm-brand);
+  color: var(--pm-on-brand, #ffffff);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.pm-toters-cart-store-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-toters-cart-row {
+  padding: 13px 2px;
+  border-bottom: 1px solid var(--pm-line);
+}
+
+.pm-toters-cart-row:last-child {
+  border-bottom: 0;
+}
+
+.pm-toters-cart-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--pm-soft);
+  border: 1px solid var(--pm-line);
+  display: grid;
+  place-items: center;
+}
+
+.pm-toters-cart-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pm-toters-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--pm-soft);
+  border: 1px solid var(--pm-line);
+  border-radius: 999px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.pm-toters-stepper button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--pm-card);
+  color: var(--pm-ink);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.pm-toters-stepper b {
+  min-width: 20px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--pm-ink);
+}
+
+@media (max-width: 480px) {
+  .pm-toters-row-thumb {
+    width: 94px;
+    height: 94px;
+  }
+  .pm-toters-shelf-card {
+    width: 122px;
+  }
+  .pm-toters-shelf-thumb {
+    width: 122px;
+    height: 122px;
+  }
+}
+
 
 

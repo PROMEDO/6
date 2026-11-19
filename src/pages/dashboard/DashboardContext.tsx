@@ -960,6 +960,7 @@ function useDashboardController({
     resolveDashboardPref(rest)
   );
   const normalizeShapeChoice = (raw?: string): MenuThemeShape =>
+    raw === 'toters' ||
     raw === 'glass' ||
     raw === 'cartoon' ||
     raw === 'dreamy' ||
@@ -2824,7 +2825,9 @@ function useDashboardController({
       ...(pairedShape ? { themeShape: pairedShape } : {}),
     });
     showToast(
-      pairedShape
+      pairedShape === 'toters'
+        ? 'تم تفعيل مظهر توترز الكامل (القوائم والصفحات والتصميم) ✓'
+        : pairedShape
         ? `تم تفعيل ${themeLabel} بكامل أشكاله وأنيميشنه ✓`
         : 'تم تطبيق التغيرات'
     );
@@ -2873,7 +2876,11 @@ function useDashboardController({
         color: chosenTheme.brand,
         bgColor: '',
       });
-      showToast(`تم تفعيل ${themeLabel} مع الأشكال والأنيميشن ✓`);
+      showToast(
+        shapeId === 'toters'
+          ? 'تم تفعيل مظهر توترز مع القوائم والتصميم الكامل ✓'
+          : `تم تفعيل ${themeLabel} مع الأشكال والأنيميشن ✓`
+      );
       return;
     }
     void commitAppearanceDraft({ themeShape: shapeId });
